@@ -12,7 +12,7 @@
       ******************************************************************
        01  STRUCT.
            03 STRUCT-TEXTE                       PIC X(60) VALUE
-           "Erreur ImmobPdfTools".
+           "Message de test".
            03 STRUCT-I                           PIC 9999.
            03 STRUCT-J                           PIC 9(6).
            03 STRUCT-BUFFER-1024                 PIC X(1024).

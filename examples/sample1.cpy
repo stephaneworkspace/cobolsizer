@@ -20,6 +20,6 @@
       *-----------------------------------------------------------------
       *    UN COMMENTAIRE
       *-----------------------------------------------------------------
-           03 STRUCT-ARRAY OCCURS 10
+           03 STRUCT-ARRAY OCCURS 10.
                05 STRUCT-ARRAY-NO                PIC 99.
                05 STRUCT-ARRAY-NOM               PIC X(100).

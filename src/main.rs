@@ -6,6 +6,7 @@
  *
  * Compatible Microfocus RM Cobol
  */
+use num::Integer;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
@@ -24,7 +25,27 @@ fn main() -> std::io::Result<()> {
     let mut file = File::open(file_path.as_path())?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
-    println!("With text:\n{}", contents);
+    println!("With text:\n{}", &contents);
+    println!("------------------");
+    // BEFORE SPLIT REMOVE COMMENT * IN COPY FILE read by line
+    let mut contents_split: Vec<&str> = contents
+        .split(".")
+        .filter(|&x| {
+            let mut count_parentese: u32 = 0;
+            let c: Vec<&str> = x.split("\"").collect();
+            count_parentese += c.len() as u32;
+            let d: Vec<&str> = x.split("'").collect();
+            count_parentese += d.len() as u32;
+            if count_parentese > 0 {
+                count_parentese.is_even()
+            } else {
+                true
+            }
+        })
+        .collect(); // WARNING "." SHOULD WORK
+    for c in contents_split.iter() {
+        println!("Split by .:\n{}", c);
+    }
     Ok(())
 }
 

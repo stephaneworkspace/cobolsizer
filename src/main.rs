@@ -72,7 +72,21 @@ fn main() -> std::io::Result<()> {
         })
         .collect(); // WARNING "." SHOULD WORK
     for c in contents_split.iter() {
-        println!("Split by .:\n{}", c);
+        println!("Split by .:\n{}", &c);
+
+        /*let v: Vec<&str> = c.splitn(2, "OCCURS").collect();
+        for (i, vv) in v.iter().enumerate() {
+            if i == 1 {
+                println!("OK: {}", vv);
+            }
+        }*/
+
+        let v: Vec<&str> = c.splitn(2, "PIC").collect();
+        for (i, vv) in v.iter().enumerate() {
+            if i == 1 {
+                println!("OK: {}", vv);
+            }
+        }
     }
     Ok(())
 }

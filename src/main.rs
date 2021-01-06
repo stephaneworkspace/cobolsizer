@@ -10,6 +10,7 @@ use num::Integer;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
+use std::io::BufReader;
 use std::path::PathBuf;
 
 fn main() -> std::io::Result<()> {
@@ -22,12 +23,39 @@ fn main() -> std::io::Result<()> {
     file_path.push(env::current_dir().unwrap().as_path());
     file_path.push("examples");
     file_path.push("sample1.cpy");
-    let mut file = File::open(file_path.as_path())?;
+    let file = File::open(file_path.as_path())?;
     let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
+    // BEFORE SPLIT REMOVE COMMENT * IN COPY FILE read by line
+
+    let reader = BufReader::new(&file);
+
+    let mut reader_mod: Vec<String> = Vec::new();
+    for l in reader.lines() {
+        let mut sw_ignore = false;
+        let line = l?;
+        if &line.chars().count() >= &7 {
+            let mut chars = line.chars();
+            let mut x: char = ' ';
+            for _ in 0..7 {
+                x = chars.next().unwrap_or(' ');
+            }
+            if x == '*' {
+                sw_ignore = true;
+            }
+        } else {
+            sw_ignore = true;
+        }
+        if !sw_ignore {
+            reader_mod.push(line.to_string())
+        }
+    }
+    contents = reader_mod.iter().fold(String::new(), |a, b| a + b + "\n");
+    contents = contents.trim_end().to_string();
+
+    // SPLIT END OF LINE
+    //file.read_to_string(&mut contents)?;
     println!("With text:\n{}", &contents);
     println!("------------------");
-    // BEFORE SPLIT REMOVE COMMENT * IN COPY FILE read by line
     let mut contents_split: Vec<&str> = contents
         .split(".")
         .filter(|&x| {

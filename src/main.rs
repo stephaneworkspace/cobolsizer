@@ -71,6 +71,7 @@ fn main() -> std::io::Result<()> {
             }
         })
         .collect(); // WARNING "." SHOULD WORK
+    let mut vector_debug: Vec<LineDebug> = Vec::new();
     for c in contents_split.iter() {
         println!("Split by .:\n{}", &c);
 
@@ -81,14 +82,58 @@ fn main() -> std::io::Result<()> {
             }
         }*/
 
+        // Closure
+        /*let v: Vec<&str> = "abc1defXghi".splitn(2, |c| c == '1' || c == 'X').collect();
+        assert_eq!(v, ["abc", "defXghi"]);*/
+
+        // NE PAS OUBLIE LES OCCURS !
         let v: Vec<&str> = c.splitn(2, "PIC").collect();
+        let mut field_pos = "";
+        let mut field_size = "";
+
         for (i, vv) in v.iter().enumerate() {
-            if i == 1 {
-                println!("OK: {}", vv);
+            match i {
+                0 => field_pos = vv,
+                1 => field_size = vv,
+                _ => {},
             }
         }
+
+        let line_debug = LineDebug {
+            field_pos: field_pos.to_string(),
+            field_size: field_size.to_string(),
+        };
+        vector_debug.push(line_debug);
+
+        /*
+        for _ in vector_debug
+            .iter()
+            .inspect(|x| ))
+        {
+            println!("{}////{}", x.field_pos, x.field_size)
+        }
+         */
+    }
+    let iter: Vec<LineDebug> = vector_debug
+        .into_iter()
+        .filter(|x| {
+            x.field_pos != "".to_string() && x.field_size != "".to_string()
+        })
+        //.inspect(|x| {
+        //    println!("Debug Inspect: {}////{}", x.field_pos, x.field_size)
+        //})
+        .map(|x| x)
+        .collect();
+    for i in iter {
+        println!("Debug: {:?}", i);
     }
     Ok(())
+}
+
+#[derive(Debug)]
+struct LineDebug {
+    field_pos: String,
+    field_size: String,
 }
 
 #[derive(Debug)]

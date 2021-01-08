@@ -104,8 +104,10 @@ fn main() -> std::io::Result<()> {
                 .clone()
                 .split_ascii_whitespace()
                 .next()
-                .unwrap_or("")
-                .to_string(),
+                .unwrap_or("0")
+                .to_string()
+                .parse()
+                .unwrap_or(0),
             field_pos: field_pos.to_string(),
             field_size: field_size.to_string(),
         };
@@ -138,7 +140,7 @@ fn main() -> std::io::Result<()> {
 
 #[derive(Debug)]
 struct LineDebug {
-    pos: String,
+    pos: u32,
     field_pos: String,
     field_size: String,
 }

@@ -58,7 +58,7 @@ fn main() -> std::io::Result<()> {
     //file.read_to_string(&mut contents)?;
     println!("With text:\n{}", &contents);
     println!("------------------");
-    let mut contents_split: Vec<&str> = contents
+    let contents_split: Vec<&str> = contents
         .split(".")
         .filter(|&x| {
             let mut count_parentese: u32 = 0;
@@ -78,11 +78,7 @@ fn main() -> std::io::Result<()> {
         println!("Split by .:\n{}", &c);
 
         let re = Regex::new(r"PIC|OCCURS").unwrap();
-        let v_type: Vec<&str> = c
-            .match_indices(&re)
-            .inspect(|(i, x)| println!("i: {} x: {}", i, x))
-            .map(|(_, x)| x)
-            .collect();
+        let v_type: Vec<&str> = c.match_indices(&re).map(|(_, x)| x).collect();
         let v: Vec<&str> = re.splitn(c, 2).collect();
         let mut field_pos = "";
         let mut field_size: String = "".to_string();
@@ -125,17 +121,69 @@ fn main() -> std::io::Result<()> {
                 .parse()
                 .unwrap_or(0),
             occurs,
+            sw_occurs: false, // Init value
             field_pos: field_pos.to_string(),
             field_size: field_size.to_string(),
         };
         vector_debug.push(line_debug);
     }
+    let mut pos = 0;
+    let mut sw_occurs = false;
+    let mut occurs_temp = 0;
+
     let iter: Vec<LineDebug> = vector_debug
         .into_iter()
         .filter(|x| {
-            x.field_pos != "".to_string() && x.field_size != "".to_string()
+            x.field_pos != "".to_string()
+                && x.field_size != "".to_string()
+                && x.field_pos.parse().unwrap_or(0) == 0
         })
-        .map(|x| x)
+        .map(|x| {
+            let ld = if sw_occurs {
+                if &pos < &x.pos {
+                    LineDebug {
+                        pos: x.pos,
+                        occurs: occurs_temp,
+                        sw_occurs: false,
+                        field_pos: x.field_pos,
+                        field_size: x.field_size,
+                    }
+                } else {
+                    sw_occurs = false;
+                    pos = 0;
+                    occurs_temp = 0;
+                    LineDebug {
+                        pos: x.pos,
+                        occurs: x.occurs,
+                        sw_occurs: false,
+                        field_pos: x.field_pos,
+                        field_size: x.field_size,
+                    }
+                }
+            } else {
+                if x.occurs > 0 {
+                    sw_occurs = true;
+                    pos = x.pos;
+                    occurs_temp = x.occurs;
+                }
+                LineDebug {
+                    pos: x.pos,
+                    occurs: x.occurs,
+                    sw_occurs: true,
+                    field_pos: x.field_pos,
+                    field_size: x.field_size,
+                }
+            };
+            ld
+        })
+        //.filter(|x| x.sw_occurs)
+        .map(|x| LineDebug {
+            pos: x.pos,
+            occurs: x.occurs,
+            sw_occurs: x.occurs > 0,
+            field_pos: x.field_pos,
+            field_size: x.field_size,
+        })
         .collect();
     for i in iter {
         println!("Debug: {:?}", i);
@@ -147,6 +195,7 @@ fn main() -> std::io::Result<()> {
 struct LineDebug {
     pos: u32,
     occurs: u32,
+    sw_occurs: bool,
     field_pos: String,
     field_size: String,
 }

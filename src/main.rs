@@ -6,7 +6,9 @@
  *
  * Compatible Microfocus RM Cobol
  */
+extern crate regex;
 use num::Integer;
+use regex::Regex;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
@@ -75,29 +77,43 @@ fn main() -> std::io::Result<()> {
     for c in contents_split.iter() {
         println!("Split by .:\n{}", &c);
 
-        /*let v: Vec<&str> = c.splitn(2, "OCCURS").collect();
-        for (i, vv) in v.iter().enumerate() {
-            if i == 1 {
-                println!("OK: {}", vv);
-            }
-        }*/
-
-        // Closure
-        /*let v: Vec<&str> = "abc1defXghi".splitn(2, |c| c == '1' || c == 'X').collect();
-        assert_eq!(v, ["abc", "defXghi"]);*/
-
-        // NE PAS OUBLIE LES OCCURS !
-        let v: Vec<&str> = c.splitn(2, "PIC").collect();
+        let re = Regex::new(r"PIC|OCCURS").unwrap();
+        let v_type: Vec<&str> = c
+            .match_indices(&re)
+            .inspect(|(i, x)| println!("i: {} x: {}", i, x))
+            .map(|(_, x)| x)
+            .collect();
+        let v: Vec<&str> = re.splitn(c, 2).collect();
         let mut field_pos = "";
-        let mut field_size = "";
+        let mut field_size: String = "".to_string();
 
         for (i, vv) in v.iter().enumerate() {
             match i {
                 0 => field_pos = vv,
-                1 => field_size = vv,
-                _ => {},
+                1 => field_size = vv.replace(" ", ""),
+                _ => break,
             }
         }
+
+        let mut sw_occurs = false;
+        for (i, vv) in v_type.iter().enumerate() {
+            match i {
+                0 => {
+                    sw_occurs = vv == &"OCCURS";
+                    break;
+                },
+                _ => {
+                    sw_occurs = false;
+                    break;
+                },
+            }
+        }
+
+        let occurs: u32 = if sw_occurs {
+            field_size.to_string().parse().unwrap_or(0)
+        } else {
+            0
+        };
 
         let line_debug = LineDebug {
             pos: field_pos
@@ -108,28 +124,17 @@ fn main() -> std::io::Result<()> {
                 .to_string()
                 .parse()
                 .unwrap_or(0),
+            occurs,
             field_pos: field_pos.to_string(),
             field_size: field_size.to_string(),
         };
         vector_debug.push(line_debug);
-
-        /*
-        for _ in vector_debug
-            .iter()
-            .inspect(|x| ))
-        {
-            println!("{}////{}", x.field_pos, x.field_size)
-        }
-         */
     }
     let iter: Vec<LineDebug> = vector_debug
         .into_iter()
         .filter(|x| {
             x.field_pos != "".to_string() && x.field_size != "".to_string()
         })
-        //.inspect(|x| {
-        //    println!("Debug Inspect: {}////{}", x.field_pos, x.field_size)
-        //})
         .map(|x| x)
         .collect();
     for i in iter {
@@ -141,6 +146,7 @@ fn main() -> std::io::Result<()> {
 #[derive(Debug)]
 struct LineDebug {
     pos: u32,
+    occurs: u32,
     field_pos: String,
     field_size: String,
 }

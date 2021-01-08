@@ -100,6 +100,12 @@ fn main() -> std::io::Result<()> {
         }
 
         let line_debug = LineDebug {
+            pos: field_pos
+                .clone()
+                .split_ascii_whitespace()
+                .next()
+                .unwrap_or("")
+                .to_string(),
             field_pos: field_pos.to_string(),
             field_size: field_size.to_string(),
         };
@@ -132,6 +138,7 @@ fn main() -> std::io::Result<()> {
 
 #[derive(Debug)]
 struct LineDebug {
+    pos: String,
     field_pos: String,
     field_size: String,
 }

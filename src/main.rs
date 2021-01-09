@@ -57,41 +57,36 @@ fn main() -> std::io::Result<()> {
             reader_mod.push(line.to_string())
         }
     }
-    contents = reader_mod.iter().fold(String::new(), |a, b| a + b + "\n");
+    contents = reader_mod
+        .iter()
+        .fold(String::new(), |a, b| format!("{}{}\n", a, b.trim_end()));
     contents = contents.trim_end().to_string();
 
     // SPLIT END OF LINE
     //file.read_to_string(&mut contents)?;
     println!("With text:\n{}", &contents);
     println!("------------------");
-    let mut sw_found = false;
-    for i in contents.char_indices().count()..0 {
-        if sw_found {
-            if contents.chars().nth(i).unwrap() == '.' {
-                contents.insert(i, 'V');
-            }
-        } else {
-            if contents.chars().nth(i).unwrap() == '.' {
-                sw_found = true;
-            }
-        }
-    }
 
     let contents_split: Vec<&str> = contents
-        .split(".")
+        .split(".\n")
         .filter(|&x| {
-            let mut count_parentese: u32 = 0;
-            let c: Vec<&str> = x.split("\"").collect();
-            count_parentese += c.len() as u32;
-            let d: Vec<&str> = x.split("'").collect();
-            count_parentese += d.len() as u32;
-            if count_parentese > 0 {
-                count_parentese.is_even()
+            if x.contains(" VALUE ") {
+                let mut count_parentese: u32 = 0;
+                let c: Vec<&str> = x.split("\"").collect();
+                count_parentese += c.len() as u32;
+                let d: Vec<&str> = x.split("'").collect();
+                count_parentese += d.len() as u32;
+                if count_parentese > 0 {
+                    count_parentese.is_even()
+                } else {
+                    true
+                }
             } else {
                 true
             }
         })
-        .collect(); // WARNING "." SHOULD WORK
+        .collect();
+
     let mut vector_debug: Vec<LineDebug> = Vec::new();
     for c in contents_split.iter() {
         let re = Regex::new(r"PIC|OCCURS").unwrap();
@@ -161,7 +156,7 @@ fn main() -> std::io::Result<()> {
     let _: Vec<&LineDebug> = vector_debug
         .iter()
         .map(|x| x)
-        .inspect(|x| println!("{:?}", x))
+        // .inspect(|x| println!("{:?}", x))
         .collect();
 
     let mut pos = 0;
@@ -216,14 +211,13 @@ fn main() -> std::io::Result<()> {
             };
             ld
         })
+        .filter(|x| !x.sw_occurs)
         .collect();
 
     let iter_proper: Vec<LineCobol> = iter
         .into_iter()
         .map(|x| {
-            let field_type: Type = if x.sw_occurs {
-                Type::OCCURS
-            } else if x.field_size.contains("X") {
+            let field_type: Type = if x.field_size.contains("X") {
                 Type::PICX(x.field_size)
             } else if x.field_size.contains("9")
                 || x.field_size.contains("Z")
@@ -279,7 +273,6 @@ struct LineCobol {
 enum Type {
     PICX(String),
     PIC9(String),
-    OCCURS,
     UNKNOWN,
 }
 
@@ -308,8 +301,9 @@ impl Type {
                 })
             },
             PIC9(val) => {
-                let re = Regex::new(r"9\((\d{1,})\)|Z\((\d{1,})\)|9|Z|-|,|V|S")
-                    .unwrap();
+                let re =
+                    Regex::new(r"9\((\d{1,})\)|Z\((\d{1,})\)|9|Z|\-|.|V|S")
+                        .unwrap();
                 let v_type: Vec<&str> =
                     val.match_indices(&re).map(|(_, x)| x).collect();
                 v_type.iter().cloned().fold(0, |acc, x| {
@@ -341,7 +335,6 @@ impl Type {
                     }
                 })
             },
-            OCCURS => 0 as u32,
             UNKNOWN => 0 as u32,
         }
     }

@@ -81,8 +81,6 @@ fn main() -> std::io::Result<()> {
         .collect(); // WARNING "." SHOULD WORK
     let mut vector_debug: Vec<LineDebug> = Vec::new();
     for c in contents_split.iter() {
-        // println!("Split by .:\n{}", &c);
-
         let re = Regex::new(r"PIC|OCCURS").unwrap();
         let v_type: Vec<&str> = c.match_indices(&re).map(|(_, x)| x).collect();
         let v: Vec<&str> = re.splitn(c, 2).collect();
@@ -295,12 +293,3 @@ impl Type {
         }
     }
 }
-
-/*
-fn compute(line: &str) -> u32 {
-    use Type::*;
-    let l: Line = Line {
-        field_type: PICX(10),
-    };
-    l.field_type.size()
-}*/

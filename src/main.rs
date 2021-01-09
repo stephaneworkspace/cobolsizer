@@ -9,8 +9,6 @@
  * L'idée serrait une sélection mode visual dans vim et une touche pour donner
  * la taille dans la quickfix list
  *
- * Et il y a aussi un default à RM Cobol c'est la taille maximum de 65k, un
- * script qui vérifie les sources serrait interessant
  */
 extern crate regex;
 mod cfg;

@@ -91,7 +91,7 @@ fn main() -> std::io::Result<()> {
             match i {
                 0 => field_pos = vv,
                 1 => {
-                    let re_value = Regex::new(r"VALUE").unwrap();
+                    let re_value = Regex::new(r"VALUE").unwrap(); // TODO BINARY
                     let splitn_value: Vec<&str> =
                         re_value.splitn(vv, 2).collect();
                     field_size = splitn_value
@@ -206,7 +206,10 @@ fn main() -> std::io::Result<()> {
                 Type::OCCURS
             } else if x.field_size.contains("X") {
                 Type::PICX(x.field_size)
-            } else if x.field_size.contains("9") || x.field_size.contains("Z") {
+            } else if x.field_size.contains("9")
+                || x.field_size.contains("Z")
+                || x.field_size.contains("-")
+            {
                 Type::PIC9(x.field_size)
             } else {
                 Type::UNKNOWN

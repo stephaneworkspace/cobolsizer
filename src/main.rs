@@ -120,7 +120,6 @@ fn main() -> std::io::Result<()> {
         let mut field_size: String = "".to_string();
         if v_type.len() > 0 {
             let v: Vec<&str> = re.splitn(c, 2).collect();
-
             for (i, vv) in v.iter().enumerate() {
                 match i {
                     0 => field_pos = vv,
@@ -176,7 +175,8 @@ fn main() -> std::io::Result<()> {
                 .unwrap_or(0),
             name,
             occurs,
-            sw_occurs: false, // Init value
+            sw_occurs: false,        // Init value
+            sw_occurs_inside: false, // Init value
             field_pos: field_pos.to_string(),
             field_size: field_size.to_string(),
         };
@@ -207,6 +207,7 @@ fn main() -> std::io::Result<()> {
                         name: x.name,
                         occurs: occurs_temp,
                         sw_occurs: false,
+                        sw_occurs_inside: false,
                         field_pos: x.field_pos,
                         field_size: x.field_size,
                     }
@@ -219,6 +220,7 @@ fn main() -> std::io::Result<()> {
                         name: x.name,
                         occurs: x.occurs,
                         sw_occurs: false,
+                        sw_occurs_inside: false,
                         field_pos: x.field_pos,
                         field_size: x.field_size,
                     }
@@ -234,11 +236,47 @@ fn main() -> std::io::Result<()> {
                     name: x.name,
                     occurs: x.occurs,
                     sw_occurs: x.occurs > 0,
+                    sw_occurs_inside: false,
                     field_pos: x.field_pos,
                     field_size: x.field_size,
                 }
             };
             ld
+        })
+        // Detect OCCURS inside PIC
+        .map(|x| {
+            if x.field_size.contains("PIC") {
+                let re_value = Regex::new(r"PIC").unwrap();
+                let splitn_value: Vec<&str> =
+                    re_value.splitn(&x.field_size, 2).collect();
+                let mut iter = splitn_value.iter();
+                let occurs = iter
+                    .next()
+                    .unwrap_or(&"")
+                    .replace(" ", "")
+                    .parse()
+                    .unwrap_or(0);
+                let field_size = iter.next().unwrap_or(&"").replace(" ", "");
+                LineDebug {
+                    pos: x.pos,
+                    name: x.name,
+                    occurs: occurs,
+                    sw_occurs: false,
+                    sw_occurs_inside: true,
+                    field_pos: x.field_pos,
+                    field_size,
+                }
+            } else {
+                LineDebug {
+                    pos: x.pos,
+                    name: x.name,
+                    occurs: x.occurs,
+                    sw_occurs: x.sw_occurs,
+                    sw_occurs_inside: false,
+                    field_pos: x.field_pos,
+                    field_size: x.field_size,
+                }
+            }
         })
         //.filter(|x| !x.sw_occurs)
         .collect();
@@ -253,7 +291,7 @@ fn main() -> std::io::Result<()> {
                 if x.field_pos.contains(" REDEFINES ") {
                     Type::PICXREDEFINES
                 } else {
-                    Type::PICX(x.field_size.clone())
+                    Type::PICX((x.field_size.clone(), x.sw_occurs_inside))
                 }
             } else if x.field_size.contains("9")
                 || x.field_size.contains("Z")
@@ -265,7 +303,7 @@ fn main() -> std::io::Result<()> {
                 if x.field_pos.contains(" REDEFINES ") {
                     Type::PIC9REDEFINES
                 } else {
-                    Type::PIC9(x.field_size.clone())
+                    Type::PIC9((x.field_size.clone(), x.sw_occurs_inside))
                 }
             } else if x.pos > 0 {
                 if x.field_pos.contains(" REDEFINES ") {
@@ -439,6 +477,7 @@ struct LineDebug {
     name: String,
     occurs: u32,
     sw_occurs: bool,
+    sw_occurs_inside: bool,
     field_pos: String,
     field_size: String,
 }
@@ -488,33 +527,77 @@ fn display(vec: Vec<&LineCobol>, sw_separator: bool) {
             None => 0,
         };
         let space = "    ";
+        let text_occurs: String = match i.field_type {
+            Type::PICX((_, sw_occurs_inside)) => {
+                if sw_occurs_inside {
+                    format!("OCCURS {}", i.occurs)
+                } else {
+                    "".to_string()
+                }
+            },
+            Type::PIC9((_, sw_occurs_inside)) => {
+                if sw_occurs_inside {
+                    format!("OCCURS {}", i.occurs)
+                } else {
+                    "".to_string()
+                }
+            },
+            _ => "".to_string(),
+        };
         let begin: String = match position {
-            1 => format!("{:6} {:02} {}", compute_size, i.pos, i.name)
-                .to_string(),
-            2 => format!("{:6} {}{:02} {}", compute_size, space, i.pos, i.name)
-                .to_string(),
-            3 => format!(
-                "{:6} {}{}{:02} {}",
-                compute_size, space, space, i.pos, i.name
+            1 => format!(
+                "{:6} {:02} {} {}",
+                compute_size, i.pos, i.name, text_occurs
             )
+            .trim_end()
+            .to_string(),
+            2 => format!(
+                "{:6} {}{:02} {} {}",
+                compute_size, space, i.pos, i.name, text_occurs
+            )
+            .trim_end()
+            .to_string(),
+            3 => format!(
+                "{:6} {}{}{:02} {} {}",
+                compute_size, space, space, i.pos, i.name, text_occurs
+            )
+            .trim_end()
             .to_string(),
             4 => format!(
-                "{:6} {}{}{}{:02} {}",
-                compute_size, space, space, space, i.pos, i.name
+                "{:6} {}{}{}{:02} {} {}",
+                compute_size, space, space, space, i.pos, i.name, text_occurs
             )
+            .trim_end()
             .to_string(),
             5 => format!(
-                "{:6} {}{}{}{}{:02} {}",
-                compute_size, space, space, space, space, i.pos, i.name
+                "{:6} {}{}{}{}{:02} {} {}",
+                compute_size,
+                space,
+                space,
+                space,
+                space,
+                i.pos,
+                i.name,
+                text_occurs
             )
+            .trim_end()
             .to_string(),
             6 => format!(
-                "{:6} {}{}{}{}{}{:02} {}",
-                compute_size, space, space, space, space, space, i.pos, i.name
+                "{:6} {}{}{}{}{}{:02} {} {}",
+                compute_size,
+                space,
+                space,
+                space,
+                space,
+                space,
+                i.pos,
+                i.name,
+                text_occurs
             )
+            .trim_end()
             .to_string(),
             7 => format!(
-                "{:6} {}{}{}{}{}{}{:02} {}",
+                "{:6} {}{}{}{}{}{}{:02} {} {}",
                 compute_size,
                 space,
                 space,
@@ -523,11 +606,13 @@ fn display(vec: Vec<&LineCobol>, sw_separator: bool) {
                 space,
                 space,
                 i.pos,
-                i.name
+                i.name,
+                text_occurs
             )
+            .trim_end()
             .to_string(),
             _ => format!(
-                "{:6} {}{}{}{}{}{}{}{:02} {}",
+                "{:6} {}{}{}{}{}{}{}{:02} {} {}",
                 compute_size,
                 space,
                 space,
@@ -537,15 +622,17 @@ fn display(vec: Vec<&LineCobol>, sw_separator: bool) {
                 space,
                 space,
                 i.pos,
-                i.name
+                i.name,
+                text_occurs
             )
+            .trim_end()
             .to_string(),
         };
         match i.field_type {
-            Type::PICX(_) => {
+            Type::PICX((_, _)) => {
                 println!("{:<49}PIC {}.", begin, i.field_type_original);
             },
-            Type::PIC9(_) => {
+            Type::PIC9((_, _)) => {
                 println!("{:<49}PIC {}.", begin, i.field_type_original);
             },
             Type::STRUCT => {
@@ -570,9 +657,9 @@ fn display(vec: Vec<&LineCobol>, sw_separator: bool) {
 
 #[derive(Debug)]
 enum Type {
-    PICX(String),
+    PICX((String, bool)), // value + sw_occurs_inside
     PICXREDEFINES,
-    PIC9(String),
+    PIC9((String, bool)), // value + sw_occurs_inside
     PIC9REDEFINES,
     STRUCT,
     STRUCTREDEFINES,
@@ -586,7 +673,7 @@ impl Type {
     fn size(&self) -> Option<u32> {
         use Type::*;
         match self {
-            PICX(val) => {
+            PICX((val, _)) => {
                 let re = Regex::new(r"X\((\d{1,})\)|X").unwrap();
                 let v_type: Vec<&str> =
                     val.match_indices(&re).map(|(_, x)| x).collect();
@@ -608,7 +695,7 @@ impl Type {
                 Some(result)
             },
             PICXREDEFINES => None,
-            PIC9(val) => {
+            PIC9((val, _)) => {
                 let re =
                     Regex::new(r"9\((\d{1,})\)|Z\((\d{1,})\)|9|Z|\-|.|V|S")
                         .unwrap();

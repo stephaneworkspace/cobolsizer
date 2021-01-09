@@ -285,7 +285,7 @@ fn main() -> std::io::Result<()> {
                     .iter()
                     .enumerate()
                     .filter(|(j, x)| {
-                        if sw_stop {
+                        if sw_stop || i == *j {
                             false
                         } else {
                             if i > *j && !sw_found {
@@ -302,7 +302,11 @@ fn main() -> std::io::Result<()> {
                         }
                     })
                     .fold(0, |acc, (_, x)| {
-                        acc + x.field_type.size().unwrap_or(0)
+                        let mut occ: u32 = x.occurs;
+                        if occ == 0 {
+                            occ = 1;
+                        }
+                        acc + (x.field_type.size().unwrap_or(0) * occ)
                     });
                 let field_type = match &record.field_type {
                     Type::STRUCT => Type::STRUCTSIZED(size),
@@ -392,6 +396,13 @@ fn display(vec: Vec<&LineCobol>) {
         if occ == 0 {
             occ = 1
         };
+        // Security
+        match &i.field_type {
+            Type::OCCURSSIZED(_) => {
+                occ = 1;
+            },
+            _ => {},
+        }
         // Check if increment pos or decrement
         let position: u32 = match min.iter().max() {
             Some(max) => {

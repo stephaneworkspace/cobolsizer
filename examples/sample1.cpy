@@ -16,6 +16,9 @@
            03 STRUCT-J                           PIC 9(6).
            03 STRUCT-BUFFER-1024                 PIC X(1024).
       *    03 STRUCT-RETURNCODE                  PIC S9(4) BINARY.
+      *                                          TODO ' = 1 BYTE ?
+           03 STRUCT-NUMERIC-VALUE               PIC -ZZZ'ZZZ,ZZ.
+           03 STRUCT-NUMERIC-VALUE-9V9           PIC S9(6)V9(2).
       *-----------------------------------------------------------------
       *    UN COMMENTAIRE
       *-----------------------------------------------------------------

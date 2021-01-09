@@ -32,9 +32,9 @@ fn main() -> std::io::Result<()> {
     file_path.push("examples");
     file_path.push("sample1.cpy");
     let file = File::open(file_path.as_path())?;
-    let mut contents = String::new();
-    // BEFORE SPLIT REMOVE COMMENT * IN COPY FILE read by line
+    let mut contents;
 
+    // BEFORE SPLIT REMOVE COMMENT * IN COPY FILE read by line
     let reader = BufReader::new(&file);
 
     let mut reader_mod: Vec<String> = Vec::new();
@@ -64,6 +64,19 @@ fn main() -> std::io::Result<()> {
     //file.read_to_string(&mut contents)?;
     println!("With text:\n{}", &contents);
     println!("------------------");
+    let mut sw_found = false;
+    for i in contents.char_indices().count()..0 {
+        if sw_found {
+            if contents.chars().nth(i).unwrap() == '.' {
+                contents.insert(i, 'V');
+            }
+        } else {
+            if contents.chars().nth(i).unwrap() == '.' {
+                sw_found = true;
+            }
+        }
+    }
+
     let contents_split: Vec<&str> = contents
         .split(".")
         .filter(|&x| {
@@ -145,6 +158,12 @@ fn main() -> std::io::Result<()> {
         };
         vector_debug.push(line_debug);
     }
+    let _: Vec<&LineDebug> = vector_debug
+        .iter()
+        .map(|x| x)
+        .inspect(|x| println!("{:?}", x))
+        .collect();
+
     let mut pos = 0;
     let mut sw_occurs = false;
     let mut occurs_temp = 0;
@@ -210,6 +229,8 @@ fn main() -> std::io::Result<()> {
                 || x.field_size.contains("Z")
                 || x.field_size.contains("-")
                 || x.field_size.contains(".")
+                || x.field_size.contains("$")
+                || x.field_size.contains("*")
             {
                 Type::PIC9(x.field_size)
             } else {
@@ -287,8 +308,8 @@ impl Type {
                 })
             },
             PIC9(val) => {
-                let re =
-                    Regex::new(r"9\((\d{1,})\)|Z\((\d{1,})\)|9|Z|-|.").unwrap();
+                let re = Regex::new(r"9\((\d{1,})\)|Z\((\d{1,})\)|9|Z|-|,|V|S")
+                    .unwrap();
                 let v_type: Vec<&str> =
                     val.match_indices(&re).map(|(_, x)| x).collect();
                 v_type.iter().cloned().fold(0, |acc, x| {
@@ -305,9 +326,14 @@ impl Type {
                     } else {
                         x.to_string()
                     };
-                    if xx.contains("9") | xx.contains("Z")
+                    if xx.contains("9")
+                        || xx.contains("Z")
                         || xx.contains("-")
                         || xx.contains(".")
+                        || xx.contains("V")
+                        || xx.contains("S")
+                        || xx.contains("$")
+                        || xx.contains("*")
                     {
                         acc + 1
                     } else {

@@ -279,25 +279,23 @@ fn main() -> std::io::Result<()> {
         match &record.field_type {
             Type::STRUCT | Type::OCCURS => {
                 let current_pos = record.pos;
-                let mut sw_found = false;
                 let mut sw_stop = false;
                 let size: u32 = iter_proper
                     .iter()
                     .enumerate()
                     .filter(|(j, x)| {
-                        if sw_stop || i == *j {
+                        if sw_stop {
                             false
                         } else {
-                            if i > *j && !sw_found {
-                                true
-                            } else {
-                                sw_found = true;
-                                if x.pos <= current_pos.clone() {
+                            if *j > i {
+                                if x.pos > current_pos.clone() {
+                                    true
+                                } else {
                                     sw_stop = true;
                                     false
-                                } else {
-                                    true
                                 }
+                            } else {
+                                false
                             }
                         }
                     })

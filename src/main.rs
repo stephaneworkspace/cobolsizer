@@ -274,116 +274,62 @@ fn main() -> std::io::Result<()> {
             }
         })
         .collect();
+    let mut iter_struct_and_occurs: Vec<LineCobol> = Vec::new();
+    for (i, record) in iter_proper.iter().enumerate() {
+        match &record.field_type {
+            Type::STRUCT | Type::OCCURS => {
+                let current_pos = record.pos;
+                let mut sw_found = false;
+                let mut sw_stop = false;
+                let size: u32 = iter_proper
+                    .iter()
+                    .enumerate()
+                    .filter(|(j, x)| {
+                        if sw_stop {
+                            false
+                        } else {
+                            if i > *j && !sw_found {
+                                true
+                            } else {
+                                sw_found = true;
+                                if x.pos <= current_pos.clone() {
+                                    sw_stop = true;
+                                    false
+                                } else {
+                                    true
+                                }
+                            }
+                        }
+                    })
+                    .fold(0, |acc, (_, x)| {
+                        acc + x.field_type.size().unwrap_or(0)
+                    });
+                let field_type = match &record.field_type {
+                    Type::STRUCT => Type::STRUCTSIZED(size),
+                    Type::OCCURS => Type::OCCURSSIZED(size),
+                    _ => Type::UNKNOWN,
+                };
+                iter_struct_and_occurs.push(LineCobol {
+                    pos: record.pos,
+                    name: (*record.name).to_string(),
+                    occurs: record.occurs,
+                    field_type,
+                    field_type_original: (*record.field_type_original)
+                        .to_string(),
+                });
+            },
+            _ => {},
+        }
+    }
+
+    let sw_compute_struct_and_occurs = clap.compute_struct_and_occurs;
+    if sw_compute_struct_and_occurs.clone() {
+        display(iter_struct_and_occurs.iter().collect());
+    }
+
     let sw_compute_src = clap.compute_src;
     if sw_compute_src.clone() {
-        let mut min: Vec<u32> = Vec::new();
-        for i in iter_proper.iter() {
-            let mut occ = i.occurs;
-            if occ == 0 {
-                occ = 1
-            };
-            // Check if increment pos or decrement
-            let position: u32 = match min.iter().max() {
-                Some(max) => {
-                    if &i.pos <= max {
-                        min = min.into_iter().filter(|&x| x < i.pos).collect();
-                    }
-                    if min.iter().find(|&x| x == &i.pos) != Some(&i.pos) {
-                        min.push(i.pos);
-                    }
-                    min.len() as u32
-                },
-                None => {
-                    min.push(i.pos);
-                    min.len() as u32
-                },
-            };
-
-            let compute_size = match i.field_type.size() {
-                Some(size) => size * occ,
-                None => 0,
-            };
-            let space = "    ";
-            let begin: String = match position {
-                1 => format!("{:6} {:02} {}", compute_size, i.pos, i.name)
-                    .to_string(),
-                2 => format!(
-                    "{:6} {}{:02} {}",
-                    compute_size, space, i.pos, i.name
-                )
-                .to_string(),
-                3 => format!(
-                    "{:6} {}{}{:02} {}",
-                    compute_size, space, space, i.pos, i.name
-                )
-                .to_string(),
-                4 => format!(
-                    "{:6} {}{}{}{:02} {}",
-                    compute_size, space, space, space, i.pos, i.name
-                )
-                .to_string(),
-                5 => format!(
-                    "{:6} {}{}{}{}{:02} {}",
-                    compute_size, space, space, space, space, i.pos, i.name
-                )
-                .to_string(),
-                6 => format!(
-                    "{:6} {}{}{}{}{}{:02} {}",
-                    compute_size,
-                    space,
-                    space,
-                    space,
-                    space,
-                    space,
-                    i.pos,
-                    i.name
-                )
-                .to_string(),
-                7 => format!(
-                    "{:6} {}{}{}{}{}{}{:02} {}",
-                    compute_size,
-                    space,
-                    space,
-                    space,
-                    space,
-                    space,
-                    space,
-                    i.pos,
-                    i.name
-                )
-                .to_string(),
-                _ => format!(
-                    "{:6} {}{}{}{}{}{}{}{:02} {}",
-                    compute_size,
-                    space,
-                    space,
-                    space,
-                    space,
-                    space,
-                    space,
-                    space,
-                    i.pos,
-                    i.name
-                )
-                .to_string(),
-            };
-            match i.field_type {
-                Type::PICX(_) => {
-                    println!("{:<49}PIC {}.", begin, i.field_type_original);
-                },
-                Type::PIC9(_) => {
-                    println!("{:<49}PIC {}.", begin, i.field_type_original);
-                },
-                Type::STRUCT => {
-                    println!("{}.", begin);
-                },
-                Type::OCCURS => {
-                    println!("{} OCCURS {}.", begin, i.field_type_original);
-                },
-                _ => {},
-            }
-        }
-        println!("------");
+        display(iter_proper.iter().collect());
     }
     let error: u32 = iter_proper.iter().fold(0, |acc, x| match x.field_type {
         Type::UNKNOWN => acc + 1,
@@ -439,6 +385,113 @@ struct LineCobol {
     field_type_original: String,
 }
 
+fn display(vec: Vec<&LineCobol>) {
+    let mut min: Vec<u32> = Vec::new();
+    for i in vec.iter() {
+        let mut occ = i.occurs;
+        if occ == 0 {
+            occ = 1
+        };
+        // Check if increment pos or decrement
+        let position: u32 = match min.iter().max() {
+            Some(max) => {
+                if &i.pos <= max {
+                    min = min.into_iter().filter(|&x| x < i.pos).collect();
+                }
+                if min.iter().find(|&x| x == &i.pos) != Some(&i.pos) {
+                    min.push(i.pos);
+                }
+                min.len() as u32
+            },
+            None => {
+                min.push(i.pos);
+                min.len() as u32
+            },
+        };
+
+        let compute_size = match i.field_type.size() {
+            Some(size) => size * occ,
+            None => 0,
+        };
+        let space = "    ";
+        let begin: String = match position {
+            1 => format!("{:6} {:02} {}", compute_size, i.pos, i.name)
+                .to_string(),
+            2 => format!("{:6} {}{:02} {}", compute_size, space, i.pos, i.name)
+                .to_string(),
+            3 => format!(
+                "{:6} {}{}{:02} {}",
+                compute_size, space, space, i.pos, i.name
+            )
+            .to_string(),
+            4 => format!(
+                "{:6} {}{}{}{:02} {}",
+                compute_size, space, space, space, i.pos, i.name
+            )
+            .to_string(),
+            5 => format!(
+                "{:6} {}{}{}{}{:02} {}",
+                compute_size, space, space, space, space, i.pos, i.name
+            )
+            .to_string(),
+            6 => format!(
+                "{:6} {}{}{}{}{}{:02} {}",
+                compute_size, space, space, space, space, space, i.pos, i.name
+            )
+            .to_string(),
+            7 => format!(
+                "{:6} {}{}{}{}{}{}{:02} {}",
+                compute_size,
+                space,
+                space,
+                space,
+                space,
+                space,
+                space,
+                i.pos,
+                i.name
+            )
+            .to_string(),
+            _ => format!(
+                "{:6} {}{}{}{}{}{}{}{:02} {}",
+                compute_size,
+                space,
+                space,
+                space,
+                space,
+                space,
+                space,
+                space,
+                i.pos,
+                i.name
+            )
+            .to_string(),
+        };
+        match i.field_type {
+            Type::PICX(_) => {
+                println!("{:<49}PIC {}.", begin, i.field_type_original);
+            },
+            Type::PIC9(_) => {
+                println!("{:<49}PIC {}.", begin, i.field_type_original);
+            },
+            Type::STRUCT => {
+                println!("{}.", begin);
+            },
+            Type::OCCURS => {
+                println!("{} OCCURS {}.", begin, i.field_type_original);
+            },
+            Type::STRUCTSIZED(_) => {
+                println!("{}.", begin);
+            },
+            Type::OCCURSSIZED(_) => {
+                println!("{} OCCURS {}.", begin, i.field_type_original);
+            },
+            _ => {},
+        }
+    }
+    println!("------");
+}
+
 #[derive(Debug)]
 enum Type {
     PICX(String),
@@ -446,6 +499,8 @@ enum Type {
     STRUCT,
     OCCURS,
     UNKNOWN,
+    STRUCTSIZED(u32),
+    OCCURSSIZED(u32),
 }
 
 impl Type {
@@ -512,6 +567,8 @@ impl Type {
             STRUCT => None,
             OCCURS => None,
             UNKNOWN => None,
+            STRUCTSIZED(val) => Some(*val),
+            OCCURSSIZED(val) => Some(*val),
         }
     }
 }

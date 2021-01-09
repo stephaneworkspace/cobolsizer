@@ -5,7 +5,6 @@
       *    - COMP-1
       *    - FILLER
       *    - OCCURS INSIDE PIC
-      *    03 STRUCT2ERR-LONG-TEXT-OCCURS-NEXT. OCCURS IN KEYWORK !
       *
       ******************************************************************
        01  STRUCT.
@@ -26,5 +25,5 @@
            03 STRUCT-NEXT                        PIC 9.
        01  STRUCT2ERR.
            03 STRUCT2ERR-LONG-TEXT               PIC X(65000).
-           03 STRUCT2ERR-LONG-TEXT-OCC-NEXT OCCURS 10.
+           03 STRUCT2ERR-LONG-TEXT-OCCURS-NEXT OCCURS 10.
                05 STRUCT2ERR-LONG-NEXT-TEXT2     PIC X(100).

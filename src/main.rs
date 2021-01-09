@@ -26,12 +26,7 @@ use std::path::PathBuf;
 fn main() -> std::io::Result<()> {
     let clap = parse();
     let sw_separator = clap.separator;
-    //println!("Compute Cobol Pic");
-    //println!("Size: {}", compute("TODO"));
-    //println!("------");
-    //let filename = "examples/sample1.cpy";
     let filename = clap.file;
-    //println!("In file {}", &filename);
     let mut file_path = PathBuf::new();
     //file_path.push(env::current_dir().unwrap().as_path());
     //file_path.push("examples");
@@ -119,7 +114,7 @@ fn main() -> std::io::Result<()> {
 
     let mut vector_debug: Vec<LineDebug> = Vec::new();
     for c in contents_split_2.iter().rev() {
-        let re = Regex::new(r"PIC|OCCURS").unwrap();
+        let re = Regex::new(r" PIC| OCCURS").unwrap();
         let v_type: Vec<&str> = c.match_indices(&re).map(|(_, x)| x).collect();
         let mut field_pos = "";
         let mut field_size: String = "".to_string();
@@ -150,7 +145,7 @@ fn main() -> std::io::Result<()> {
         for (i, vv) in v_type.iter().enumerate() {
             match i {
                 0 => {
-                    sw_occurs = vv == &"OCCURS";
+                    sw_occurs = vv == &" OCCURS";
                     break;
                 },
                 _ => {

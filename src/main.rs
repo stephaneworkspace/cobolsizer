@@ -86,7 +86,16 @@ fn main() -> std::io::Result<()> {
         for (i, vv) in v.iter().enumerate() {
             match i {
                 0 => field_pos = vv,
-                1 => field_size = vv.replace(" ", ""),
+                1 => {
+                    let re_value = Regex::new(r"VALUE").unwrap();
+                    let splitn_value: Vec<&str> =
+                        re_value.splitn(vv, 2).collect();
+                    field_size = splitn_value
+                        .iter()
+                        .next()
+                        .unwrap_or(&"")
+                        .replace(" ", "")
+                },
                 _ => break,
             }
         }

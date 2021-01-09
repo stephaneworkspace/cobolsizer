@@ -91,25 +91,29 @@ fn main() -> std::io::Result<()> {
     for c in contents_split.iter() {
         let re = Regex::new(r"PIC|OCCURS").unwrap();
         let v_type: Vec<&str> = c.match_indices(&re).map(|(_, x)| x).collect();
-        let v: Vec<&str> = re.splitn(c, 2).collect();
         let mut field_pos = "";
         let mut field_size: String = "".to_string();
+        if v_type.len() > 0 {
+            let v: Vec<&str> = re.splitn(c, 2).collect();
 
-        for (i, vv) in v.iter().enumerate() {
-            match i {
-                0 => field_pos = vv,
-                1 => {
-                    let re_value = Regex::new(r"VALUE").unwrap(); // TODO BINARY
-                    let splitn_value: Vec<&str> =
-                        re_value.splitn(vv, 2).collect();
-                    field_size = splitn_value
-                        .iter()
-                        .next()
-                        .unwrap_or(&"")
-                        .replace(" ", "")
-                },
-                _ => break,
+            for (i, vv) in v.iter().enumerate() {
+                match i {
+                    0 => field_pos = vv,
+                    1 => {
+                        let re_value = Regex::new(r"VALUE").unwrap(); // TODO BINARY
+                        let splitn_value: Vec<&str> =
+                            re_value.splitn(vv, 2).collect();
+                        field_size = splitn_value
+                            .iter()
+                            .next()
+                            .unwrap_or(&"")
+                            .replace(" ", "")
+                    },
+                    _ => break,
+                }
             }
+        } else {
+            field_pos = &c;
         }
 
         let mut sw_occurs = false;
@@ -156,7 +160,7 @@ fn main() -> std::io::Result<()> {
     let _: Vec<&LineDebug> = vector_debug
         .iter()
         .map(|x| x)
-        // .inspect(|x| println!("{:?}", x))
+        .inspect(|x| println!("{:?}", x))
         .collect();
 
     let mut pos = 0;
@@ -167,7 +171,7 @@ fn main() -> std::io::Result<()> {
         .into_iter()
         .filter(|x| {
             x.field_pos != "".to_string()
-                && x.field_size != "".to_string()
+              //  && x.field_size != "".to_string()
                 && x.field_pos.parse().unwrap_or(0) == 0
         })
         .map(|x| {
@@ -211,13 +215,15 @@ fn main() -> std::io::Result<()> {
             };
             ld
         })
-        .filter(|x| !x.sw_occurs)
+        //.filter(|x| !x.sw_occurs)
         .collect();
 
     let iter_proper: Vec<LineCobol> = iter
         .into_iter()
         .map(|x| {
-            let field_type: Type = if x.field_size.contains("X") {
+            let field_type: Type = if x.sw_occurs {
+                Type::OCCURS
+            } else if x.field_size.contains("X") {
                 Type::PICX(x.field_size)
             } else if x.field_size.contains("9")
                 || x.field_size.contains("Z")
@@ -227,6 +233,8 @@ fn main() -> std::io::Result<()> {
                 || x.field_size.contains("*")
             {
                 Type::PIC9(x.field_size)
+            } else if x.pos > 0 {
+                Type::STRUCT
             } else {
                 Type::UNKNOWN
             };
@@ -273,6 +281,8 @@ struct LineCobol {
 enum Type {
     PICX(String),
     PIC9(String),
+    STRUCT,
+    OCCURS,
     UNKNOWN,
 }
 
@@ -335,6 +345,8 @@ impl Type {
                     }
                 })
             },
+            STRUCT => 0 as u32,
+            OCCURS => 0 as u32,
             UNKNOWN => 0 as u32,
         }
     }

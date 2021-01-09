@@ -228,7 +228,7 @@ fn main() -> std::io::Result<()> {
             let field_type: Type = if x.sw_occurs {
                 Type::OCCURS
             } else if x.field_size.contains("X") {
-                Type::PICX(x.field_size)
+                Type::PICX(x.field_size.clone())
             } else if x.field_size.contains("9")
                 || x.field_size.contains("Z")
                 || x.field_size.contains("-")
@@ -236,7 +236,7 @@ fn main() -> std::io::Result<()> {
                 || x.field_size.contains("$")
                 || x.field_size.contains("*")
             {
-                Type::PIC9(x.field_size)
+                Type::PIC9(x.field_size.clone())
             } else if x.pos > 0 {
                 Type::STRUCT
             } else {
@@ -247,22 +247,106 @@ fn main() -> std::io::Result<()> {
                 name: x.name,
                 occurs: x.occurs,
                 field_type,
+                field_type_original: x.field_size,
             }
         })
         .collect();
 
+    let mut min: Vec<u32> = Vec::new();
     for i in iter_proper.iter() {
         let mut occ = i.occurs;
         if occ == 0 {
             occ = 1
         };
-        match i.field_type.size() {
-            Some(size) => {
-                println!("{:?}, size: {}", &i, size * occ);
+        // Check if increment pos or decrement
+        let position: u32 = match min.iter().max() {
+            Some(max) => {
+                if &i.pos <= max {
+                    min = min.into_iter().filter(|&x| x < i.pos).collect();
+                }
+                if min.iter().find(|&x| x == &i.pos) != Some(&i.pos) {
+                    min.push(i.pos);
+                }
+                min.len() as u32
             },
             None => {
-                println!("{:?}", &i);
+                min.push(i.pos);
+                min.len() as u32
             },
+        };
+
+        let compute_size = match i.field_type.size() {
+            Some(size) => size * occ,
+            None => 0,
+        };
+        let space = "    ";
+        let begin: String = match position {
+            1 => format!("{:6} {:02} {}", compute_size, i.pos, i.name)
+                .to_string(),
+            2 => format!("{:6} {}{:02} {}", compute_size, space, i.pos, i.name)
+                .to_string(),
+            3 => format!(
+                "{:6} {}{}{:02} {}",
+                compute_size, space, space, i.pos, i.name
+            )
+            .to_string(),
+            4 => format!(
+                "{:6} {}{}{}{:02} {}",
+                compute_size, space, space, space, i.pos, i.name
+            )
+            .to_string(),
+            5 => format!(
+                "{:6} {}{}{}{}{:02} {}",
+                compute_size, space, space, space, space, i.pos, i.name
+            )
+            .to_string(),
+            6 => format!(
+                "{:6} {}{}{}{}{}{:02} {}",
+                compute_size, space, space, space, space, space, i.pos, i.name
+            )
+            .to_string(),
+            7 => format!(
+                "{:6} {}{}{}{}{}{}{:02} {}",
+                compute_size,
+                space,
+                space,
+                space,
+                space,
+                space,
+                space,
+                i.pos,
+                i.name
+            )
+            .to_string(),
+            _ => format!(
+                "{:6} {}{}{}{}{}{}{}{:02} {}",
+                compute_size,
+                space,
+                space,
+                space,
+                space,
+                space,
+                space,
+                space,
+                i.pos,
+                i.name
+            )
+            .to_string(),
+        };
+        match i.field_type {
+            Type::PICX(_) => {
+                println!("{:<49}PIC {}.", begin, i.field_type_original);
+            },
+            Type::PIC9(_) => {
+                println!("{:<49}PIC {}.", begin, i.field_type_original);
+            },
+            Type::STRUCT => {
+                println!("{}.", begin);
+            },
+            Type::OCCURS => {
+                println!("{} OCCURS {}.", begin, i.field_type_original);
+            },
+            _ => {},
         }
     }
     println!("------------------");
@@ -295,6 +379,7 @@ struct LineCobol {
     name: String,
     occurs: u32,
     field_type: Type,
+    field_type_original: String,
 }
 
 #[derive(Debug)]

@@ -4,7 +4,7 @@ use clap::{App, Arg};
 pub struct Config {
     pub file: String,
     pub result: bool,
-    pub rm_cobol_limit_65280: bool,
+    pub rm_cobol_limit_65280: bool, // page 40 https://www.microfocus.com/documentation/rm-cobol/1216/RMC-UG.pdf
     pub filtered_src: bool,
     pub compute_src: bool,
     pub compute_struct_and_occurs: bool,

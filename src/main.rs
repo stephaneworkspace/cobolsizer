@@ -111,6 +111,10 @@ fn main() -> std::io::Result<()> {
             0
         };
 
+        let mut iter_name = field_pos.clone().split_ascii_whitespace();
+        let _ = iter_name.next().unwrap_or("?").to_string();
+        let name: String = iter_name.next().unwrap_or("?").to_string();
+
         let line_debug = LineDebug {
             pos: field_pos
                 .clone()
@@ -120,6 +124,7 @@ fn main() -> std::io::Result<()> {
                 .to_string()
                 .parse()
                 .unwrap_or(0),
+            name,
             occurs,
             sw_occurs: false, // Init value
             field_pos: field_pos.to_string(),
@@ -143,6 +148,7 @@ fn main() -> std::io::Result<()> {
                 if &pos < &x.pos {
                     LineDebug {
                         pos: x.pos,
+                        name: x.name,
                         occurs: occurs_temp,
                         sw_occurs: false,
                         field_pos: x.field_pos,
@@ -154,6 +160,7 @@ fn main() -> std::io::Result<()> {
                     occurs_temp = 0;
                     LineDebug {
                         pos: x.pos,
+                        name: x.name,
                         occurs: x.occurs,
                         sw_occurs: false,
                         field_pos: x.field_pos,
@@ -168,6 +175,7 @@ fn main() -> std::io::Result<()> {
                 }
                 LineDebug {
                     pos: x.pos,
+                    name: x.name,
                     occurs: x.occurs,
                     sw_occurs: true,
                     field_pos: x.field_pos,
@@ -176,16 +184,20 @@ fn main() -> std::io::Result<()> {
             };
             ld
         })
-        //.filter(|x| x.sw_occurs)
-        .map(|x| LineDebug {
+        .collect();
+
+    let iter_proper: Vec<LineCobol> = iter
+        .into_iter()
+        .map(|x| LineCobol {
             pos: x.pos,
+            name: x.name,
             occurs: x.occurs,
-            sw_occurs: x.occurs > 0,
-            field_pos: x.field_pos,
+            sw_occurs: x.sw_occurs,
             field_size: x.field_size,
         })
         .collect();
-    for i in iter {
+
+    for i in iter_proper {
         println!("Debug: {:?}", i);
     }
     Ok(())
@@ -194,9 +206,19 @@ fn main() -> std::io::Result<()> {
 #[derive(Debug)]
 struct LineDebug {
     pos: u32,
+    name: String,
     occurs: u32,
     sw_occurs: bool,
     field_pos: String,
+    field_size: String,
+}
+
+#[derive(Debug)]
+struct LineCobol {
+    pos: u32,
+    name: String,
+    occurs: u32,
+    sw_occurs: bool,
     field_size: String,
 }
 

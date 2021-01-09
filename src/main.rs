@@ -247,11 +247,6 @@ struct LineCobol {
 }
 
 #[derive(Debug)]
-struct Line {
-    field_type: Type,
-}
-
-#[derive(Debug)]
 enum Type {
     PICX(String),
     PIC9(String),

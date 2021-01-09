@@ -25,6 +25,7 @@ use std::path::PathBuf;
 
 fn main() -> std::io::Result<()> {
     let clap = parse();
+    let sw_separator = clap.separator;
     //println!("Compute Cobol Pic");
     //println!("Size: {}", compute("TODO"));
     //println!("------");
@@ -68,8 +69,10 @@ fn main() -> std::io::Result<()> {
     contents = contents.trim_end().to_string();
 
     if clap.filtered_src {
-        println!("Original:\n{}", &contents);
-        println!("------");
+        println!("{}", &contents);
+        if sw_separator.clone() {
+            println!("------");
+        }
     }
 
     // SPLIT END OF LINE
@@ -326,44 +329,75 @@ fn main() -> std::io::Result<()> {
 
     let sw_compute_struct_and_occurs = clap.compute_struct_and_occurs;
     if sw_compute_struct_and_occurs.clone() {
-        display(iter_struct_and_occurs.iter().collect());
+        display(
+            iter_struct_and_occurs.iter().collect(),
+            sw_separator.clone(),
+        );
+    }
+
+    if clap.rm_cobol_limit_65280 {
+        display(
+            iter_struct_and_occurs
+                .iter()
+                .filter(|x| match x.field_type {
+                    Type::STRUCTSIZED(val) => {
+                        if val > 65280 {
+                            true
+                        } else {
+                            false
+                        }
+                    },
+                    Type::OCCURSSIZED(val) => {
+                        if val > 65280 {
+                            true
+                        } else {
+                            false
+                        }
+                    },
+                    _ => false,
+                })
+                .collect(),
+            sw_separator.clone(),
+        );
     }
 
     let sw_compute_src = clap.compute_src;
     if sw_compute_src.clone() {
-        display(iter_proper.iter().collect());
+        display(iter_proper.iter().collect(), sw_separator.clone());
     }
     let error: u32 = iter_proper.iter().fold(0, |acc, x| match x.field_type {
         Type::UNKNOWN => acc + 1,
         _ => acc,
     });
+    if clap.result {
+        if sw_compute_src {
+            println!(
+                "{:6}",
+                iter_proper.iter().fold(0, |acc, x| {
+                    let mut occ = x.occurs;
+                    if occ == 0 {
+                        occ = 1;
+                    }
+                    acc + (x.field_type.size().unwrap_or(0) * occ)
+                })
+            );
+        } else {
+            println!(
+                "{}",
+                iter_proper.iter().fold(0, |acc, x| {
+                    let mut occ = x.occurs;
+                    if occ == 0 {
+                        occ = 1;
+                    }
+                    acc + (x.field_type.size().unwrap_or(0) * occ)
+                })
+            );
+        }
+    }
     // Nothing in UNKNOWN... other line than regex COBOL are ignored,
     // this code isn't utile
     if error > 0 {
-        println!("{} structure COBOL error line found !", error);
-    }
-    if sw_compute_src {
-        println!(
-            "{:6}",
-            iter_proper.iter().fold(0, |acc, x| {
-                let mut occ = x.occurs;
-                if occ == 0 {
-                    occ = 1;
-                }
-                acc + (x.field_type.size().unwrap_or(0) * occ)
-            })
-        );
-    } else {
-        println!(
-            "{}",
-            iter_proper.iter().fold(0, |acc, x| {
-                let mut occ = x.occurs;
-                if occ == 0 {
-                    occ = 1;
-                }
-                acc + (x.field_type.size().unwrap_or(0) * occ)
-            })
-        );
+        eprintln!("{} structure COBOL error line found !", error);
     }
     Ok(())
 }
@@ -387,7 +421,7 @@ struct LineCobol {
     field_type_original: String,
 }
 
-fn display(vec: Vec<&LineCobol>) {
+fn display(vec: Vec<&LineCobol>, sw_separator: bool) {
     let mut min: Vec<u32> = Vec::new();
     for i in vec.iter() {
         let mut occ = i.occurs;
@@ -498,7 +532,9 @@ fn display(vec: Vec<&LineCobol>) {
             _ => {},
         }
     }
-    println!("------");
+    if sw_separator.clone() {
+        println!("------");
+    }
 }
 
 #[derive(Debug)]

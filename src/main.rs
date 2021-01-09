@@ -242,14 +242,19 @@ fn main() -> std::io::Result<()> {
         })
         //.filter(|x| !x.sw_occurs)
         .collect();
-
+    let mut old_pos: u32 = 0;
+    let mut sw_redefines = false;
     let iter_proper: Vec<LineCobol> = iter
         .into_iter()
         .map(|x| {
             let field_type: Type = if x.sw_occurs {
                 Type::OCCURS
             } else if x.field_size.contains("X") {
-                Type::PICX(x.field_size.clone())
+                if x.field_pos.contains(" REDEFINES ") {
+                    Type::PICXREDEFINES
+                } else {
+                    Type::PICX(x.field_size.clone())
+                }
             } else if x.field_size.contains("9")
                 || x.field_size.contains("Z")
                 || x.field_size.contains("-")
@@ -257,9 +262,17 @@ fn main() -> std::io::Result<()> {
                 || x.field_size.contains("$")
                 || x.field_size.contains("*")
             {
-                Type::PIC9(x.field_size.clone())
+                if x.field_pos.contains(" REDEFINES ") {
+                    Type::PIC9REDEFINES
+                } else {
+                    Type::PIC9(x.field_size.clone())
+                }
             } else if x.pos > 0 {
-                Type::STRUCT
+                if x.field_pos.contains(" REDEFINES ") {
+                    Type::STRUCTREDEFINES
+                } else {
+                    Type::STRUCT
+                }
             } else {
                 Type::UNKNOWN
             };
@@ -270,6 +283,29 @@ fn main() -> std::io::Result<()> {
                 field_type,
                 field_type_original: x.field_size,
             }
+        })
+        // ignore REDEFINES
+        .filter(|x| match x.field_type {
+            Type::PICXREDEFINES => false,
+            Type::PIC9REDEFINES => false,
+            Type::STRUCTREDEFINES => {
+                sw_redefines = true;
+                old_pos = x.pos;
+                false
+            },
+            _ => {
+                if sw_redefines {
+                    if x.pos > old_pos {
+                        false
+                    } else {
+                        sw_redefines = false;
+                        old_pos = 0;
+                        true
+                    }
+                } else {
+                    true
+                }
+            },
         })
         .collect();
     let mut iter_struct_and_occurs: Vec<LineCobol> = Vec::new();
@@ -535,8 +571,11 @@ fn display(vec: Vec<&LineCobol>, sw_separator: bool) {
 #[derive(Debug)]
 enum Type {
     PICX(String),
+    PICXREDEFINES,
     PIC9(String),
+    PIC9REDEFINES,
     STRUCT,
+    STRUCTREDEFINES,
     OCCURS,
     UNKNOWN,
     STRUCTSIZED(u32),
@@ -568,6 +607,7 @@ impl Type {
                 });
                 Some(result)
             },
+            PICXREDEFINES => None,
             PIC9(val) => {
                 let re =
                     Regex::new(r"9\((\d{1,})\)|Z\((\d{1,})\)|9|Z|\-|.|V|S")
@@ -604,7 +644,9 @@ impl Type {
                 });
                 Some(result)
             },
+            PIC9REDEFINES => None,
             STRUCT => None,
+            STRUCTREDEFINES => None,
             OCCURS => None,
             UNKNOWN => None,
             STRUCTSIZED(val) => Some(*val),

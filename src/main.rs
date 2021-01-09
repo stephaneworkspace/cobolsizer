@@ -17,7 +17,7 @@ mod cfg;
 use cfg::parse;
 use num::Integer;
 use regex::Regex;
-use std::env;
+//use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -25,16 +25,17 @@ use std::path::PathBuf;
 
 fn main() -> std::io::Result<()> {
     let clap = parse();
-    println!("Compute Cobol Pic");
+    //println!("Compute Cobol Pic");
     //println!("Size: {}", compute("TODO"));
-    println!("-----------------");
+    //println!("------");
     //let filename = "examples/sample1.cpy";
     let filename = clap.file;
-    println!("In file {}", filename);
+    //println!("In file {}", &filename);
     let mut file_path = PathBuf::new();
-    file_path.push(env::current_dir().unwrap().as_path());
-    file_path.push("examples");
-    file_path.push("sample1.cpy");
+    //file_path.push(env::current_dir().unwrap().as_path());
+    //file_path.push("examples");
+    //file_path.push("sample1.cpy");
+    file_path.push(filename);
     let file = File::open(file_path.as_path())?;
     let mut contents;
 
@@ -66,11 +67,12 @@ fn main() -> std::io::Result<()> {
         .fold(String::new(), |a, b| format!("{}{}\n", a, b.trim_end()));
     contents = contents.trim_end().to_string();
 
-    // SPLIT END OF LINE
-    //file.read_to_string(&mut contents)?;
-    println!("With text:\n{}", &contents);
-    println!("------------------");
+    if clap.filtered_src {
+        println!("Original:\n{}", &contents);
+        println!("------");
+    }
 
+    // SPLIT END OF LINE
     let contents_split: Vec<&str> = contents
         .split(".\n")
         .filter(|&x| {
@@ -90,9 +92,30 @@ fn main() -> std::io::Result<()> {
             }
         })
         .collect();
+    // Bug sometime no \n at end
+    let mut sw_last = true;
+    let contents_split_2: Vec<String> = contents_split
+        .iter()
+        .rev()
+        .map(|&x| {
+            if sw_last {
+                let mut temp: String = x.to_string();
+                match temp.trim_end().chars().rev().next() {
+                    Some('.') => {
+                        temp.pop();
+                    },
+                    _ => {},
+                }
+                sw_last = false;
+                temp
+            } else {
+                x.to_string()
+            }
+        })
+        .collect();
 
     let mut vector_debug: Vec<LineDebug> = Vec::new();
-    for c in contents_split.iter() {
+    for c in contents_split_2.iter().rev() {
         let re = Regex::new(r"PIC|OCCURS").unwrap();
         let v_type: Vec<&str> = c.match_indices(&re).map(|(_, x)| x).collect();
         let mut field_pos = "";
@@ -251,115 +274,149 @@ fn main() -> std::io::Result<()> {
             }
         })
         .collect();
-
-    let mut min: Vec<u32> = Vec::new();
-    for i in iter_proper.iter() {
-        let mut occ = i.occurs;
-        if occ == 0 {
-            occ = 1
-        };
-        // Check if increment pos or decrement
-        let position: u32 = match min.iter().max() {
-            Some(max) => {
-                if &i.pos <= max {
-                    min = min.into_iter().filter(|&x| x < i.pos).collect();
-                }
-                if min.iter().find(|&x| x == &i.pos) != Some(&i.pos) {
-                    min.push(i.pos);
-                }
-                min.len() as u32
-            },
-            None => {
-                min.push(i.pos);
-                min.len() as u32
-            },
-        };
-
-        let compute_size = match i.field_type.size() {
-            Some(size) => size * occ,
-            None => 0,
-        };
-        let space = "    ";
-        let begin: String = match position {
-            1 => format!("{:6} {:02} {}", compute_size, i.pos, i.name)
-                .to_string(),
-            2 => format!("{:6} {}{:02} {}", compute_size, space, i.pos, i.name)
-                .to_string(),
-            3 => format!(
-                "{:6} {}{}{:02} {}",
-                compute_size, space, space, i.pos, i.name
-            )
-            .to_string(),
-            4 => format!(
-                "{:6} {}{}{}{:02} {}",
-                compute_size, space, space, space, i.pos, i.name
-            )
-            .to_string(),
-            5 => format!(
-                "{:6} {}{}{}{}{:02} {}",
-                compute_size, space, space, space, space, i.pos, i.name
-            )
-            .to_string(),
-            6 => format!(
-                "{:6} {}{}{}{}{}{:02} {}",
-                compute_size, space, space, space, space, space, i.pos, i.name
-            )
-            .to_string(),
-            7 => format!(
-                "{:6} {}{}{}{}{}{}{:02} {}",
-                compute_size,
-                space,
-                space,
-                space,
-                space,
-                space,
-                space,
-                i.pos,
-                i.name
-            )
-            .to_string(),
-            _ => format!(
-                "{:6} {}{}{}{}{}{}{}{:02} {}",
-                compute_size,
-                space,
-                space,
-                space,
-                space,
-                space,
-                space,
-                space,
-                i.pos,
-                i.name
-            )
-            .to_string(),
-        };
-        match i.field_type {
-            Type::PICX(_) => {
-                println!("{:<49}PIC {}.", begin, i.field_type_original);
-            },
-            Type::PIC9(_) => {
-                println!("{:<49}PIC {}.", begin, i.field_type_original);
-            },
-            Type::STRUCT => {
-                println!("{}.", begin);
-            },
-            Type::OCCURS => {
-                println!("{} OCCURS {}.", begin, i.field_type_original);
-            },
-            _ => {},
-        }
-    }
-    println!("------------------");
-    println!(
-        "Size: {}",
-        iter_proper.iter().fold(0, |acc, x| {
-            let mut occ = x.occurs;
+    let sw_compute_src = clap.compute_src;
+    if sw_compute_src.clone() {
+        let mut min: Vec<u32> = Vec::new();
+        for i in iter_proper.iter() {
+            let mut occ = i.occurs;
             if occ == 0 {
-                occ = 1;
+                occ = 1
+            };
+            // Check if increment pos or decrement
+            let position: u32 = match min.iter().max() {
+                Some(max) => {
+                    if &i.pos <= max {
+                        min = min.into_iter().filter(|&x| x < i.pos).collect();
+                    }
+                    if min.iter().find(|&x| x == &i.pos) != Some(&i.pos) {
+                        min.push(i.pos);
+                    }
+                    min.len() as u32
+                },
+                None => {
+                    min.push(i.pos);
+                    min.len() as u32
+                },
+            };
+
+            let compute_size = match i.field_type.size() {
+                Some(size) => size * occ,
+                None => 0,
+            };
+            let space = "    ";
+            let begin: String = match position {
+                1 => format!("{:6} {:02} {}", compute_size, i.pos, i.name)
+                    .to_string(),
+                2 => format!(
+                    "{:6} {}{:02} {}",
+                    compute_size, space, i.pos, i.name
+                )
+                .to_string(),
+                3 => format!(
+                    "{:6} {}{}{:02} {}",
+                    compute_size, space, space, i.pos, i.name
+                )
+                .to_string(),
+                4 => format!(
+                    "{:6} {}{}{}{:02} {}",
+                    compute_size, space, space, space, i.pos, i.name
+                )
+                .to_string(),
+                5 => format!(
+                    "{:6} {}{}{}{}{:02} {}",
+                    compute_size, space, space, space, space, i.pos, i.name
+                )
+                .to_string(),
+                6 => format!(
+                    "{:6} {}{}{}{}{}{:02} {}",
+                    compute_size,
+                    space,
+                    space,
+                    space,
+                    space,
+                    space,
+                    i.pos,
+                    i.name
+                )
+                .to_string(),
+                7 => format!(
+                    "{:6} {}{}{}{}{}{}{:02} {}",
+                    compute_size,
+                    space,
+                    space,
+                    space,
+                    space,
+                    space,
+                    space,
+                    i.pos,
+                    i.name
+                )
+                .to_string(),
+                _ => format!(
+                    "{:6} {}{}{}{}{}{}{}{:02} {}",
+                    compute_size,
+                    space,
+                    space,
+                    space,
+                    space,
+                    space,
+                    space,
+                    space,
+                    i.pos,
+                    i.name
+                )
+                .to_string(),
+            };
+            match i.field_type {
+                Type::PICX(_) => {
+                    println!("{:<49}PIC {}.", begin, i.field_type_original);
+                },
+                Type::PIC9(_) => {
+                    println!("{:<49}PIC {}.", begin, i.field_type_original);
+                },
+                Type::STRUCT => {
+                    println!("{}.", begin);
+                },
+                Type::OCCURS => {
+                    println!("{} OCCURS {}.", begin, i.field_type_original);
+                },
+                _ => {},
             }
-            acc + (x.field_type.size().unwrap_or(0) * occ)
-        })
-    );
+        }
+        println!("------");
+    }
+    let error: u32 = iter_proper.iter().fold(0, |acc, x| match x.field_type {
+        Type::UNKNOWN => acc + 1,
+        _ => acc,
+    });
+    // Nothing in UNKNOWN... other line than regex COBOL are ignored,
+    // this code isn't utile
+    if error > 0 {
+        println!("{} structure COBOL error line found !", error);
+    }
+    if sw_compute_src {
+        println!(
+            "{:6}",
+            iter_proper.iter().fold(0, |acc, x| {
+                let mut occ = x.occurs;
+                if occ == 0 {
+                    occ = 1;
+                }
+                acc + (x.field_type.size().unwrap_or(0) * occ)
+            })
+        );
+    } else {
+        println!(
+            "{}",
+            iter_proper.iter().fold(0, |acc, x| {
+                let mut occ = x.occurs;
+                if occ == 0 {
+                    occ = 1;
+                }
+                acc + (x.field_type.size().unwrap_or(0) * occ)
+            })
+        );
+    }
     Ok(())
 }
 

@@ -209,6 +209,7 @@ fn main() -> std::io::Result<()> {
             } else if x.field_size.contains("9")
                 || x.field_size.contains("Z")
                 || x.field_size.contains("-")
+                || x.field_size.contains(".")
             {
                 Type::PIC9(x.field_size)
             } else {
@@ -225,7 +226,11 @@ fn main() -> std::io::Result<()> {
         .collect();
 
     for i in iter_proper {
-        println!("Debug: {:?}, size: {}", &i, i.field_type.size() * i.occurs);
+        let mut occ = i.occurs;
+        if occ == 0 {
+            occ = 1
+        };
+        println!("Debug: {:?}, size: {}", &i, i.field_type.size() * occ);
     }
     Ok(())
 }
@@ -280,11 +285,35 @@ impl Type {
                         acc + xx.parse().unwrap_or(0)
                     }
                 })
-                //*val
             },
-            PIC9(_) => {
-                // TODO more in depth
-                0 as u32
+            PIC9(val) => {
+                let re =
+                    Regex::new(r"9\((\d{1,})\)|Z\((\d{1,})\)|9|Z|-|.").unwrap();
+                let v_type: Vec<&str> =
+                    val.match_indices(&re).map(|(_, x)| x).collect();
+                v_type.iter().cloned().fold(0, |acc, x| {
+                    let xx: String = if x.contains("9(") {
+                        let mut temp_xx: String =
+                            x.replace("9(", "").to_string();
+                        temp_xx = temp_xx.replace(")", "").to_string();
+                        temp_xx
+                    } else if x.contains("Z(") {
+                        let mut temp_xx: String =
+                            x.replace("Z(", "").to_string();
+                        temp_xx = temp_xx.replace(")", "").to_string();
+                        temp_xx
+                    } else {
+                        x.to_string()
+                    };
+                    if xx.contains("9") | xx.contains("Z")
+                        || xx.contains("-")
+                        || xx.contains(".")
+                    {
+                        acc + 1
+                    } else {
+                        acc + xx.parse().unwrap_or(0)
+                    }
+                })
             },
             OCCURS => 0 as u32,
             UNKNOWN => 0 as u32,

@@ -5,6 +5,12 @@
  * Rust Cobol sizer by Stéphane (https://github.com/stephaneworkspace)
  *
  * Compatible Microfocus RM Cobol
+ *
+ * L'idée serrait une sélection mode visual dans vim et une touche pour donner
+ * la taille dans la quickfix list
+ *
+ * Et il y a aussi un default à RM Cobol c'est la taille maximum de 65k, un
+ * script qui vérifie les sources serrait interessant
  */
 extern crate regex;
 use num::Integer;
@@ -75,7 +81,7 @@ fn main() -> std::io::Result<()> {
         .collect(); // WARNING "." SHOULD WORK
     let mut vector_debug: Vec<LineDebug> = Vec::new();
     for c in contents_split.iter() {
-        println!("Split by .:\n{}", &c);
+        // println!("Split by .:\n{}", &c);
 
         let re = Regex::new(r"PIC|OCCURS").unwrap();
         let v_type: Vec<&str> = c.match_indices(&re).map(|(_, x)| x).collect();
@@ -186,7 +192,7 @@ fn main() -> std::io::Result<()> {
                     pos: x.pos,
                     name: x.name,
                     occurs: x.occurs,
-                    sw_occurs: true,
+                    sw_occurs: x.occurs > 0,
                     field_pos: x.field_pos,
                     field_size: x.field_size,
                 }
@@ -197,17 +203,28 @@ fn main() -> std::io::Result<()> {
 
     let iter_proper: Vec<LineCobol> = iter
         .into_iter()
-        .map(|x| LineCobol {
-            pos: x.pos,
-            name: x.name,
-            occurs: x.occurs,
-            sw_occurs: x.sw_occurs,
-            field_size: x.field_size,
+        .map(|x| {
+            let field_type: Type = if x.sw_occurs {
+                Type::OCCURS
+            } else if x.field_size.contains("X") {
+                Type::PICX(x.field_size)
+            } else if x.field_size.contains("9") || x.field_size.contains("Z") {
+                Type::PIC9(x.field_size)
+            } else {
+                Type::UNKNOWN
+            };
+            LineCobol {
+                pos: x.pos,
+                name: x.name,
+                occurs: x.occurs,
+                sw_occurs: x.sw_occurs,
+                field_type,
+            }
         })
         .collect();
 
     for i in iter_proper {
-        println!("Debug: {:?}", i);
+        println!("Debug: {:?}, size: {}", &i, i.field_type.size() * i.occurs);
     }
     Ok(())
 }
@@ -228,7 +245,7 @@ struct LineCobol {
     name: String,
     occurs: u32,
     sw_occurs: bool,
-    field_size: String,
+    field_type: Type,
 }
 
 #[derive(Debug)]
@@ -238,32 +255,52 @@ struct Line {
 
 #[derive(Debug)]
 enum Type {
-    PICX(u32),
-    PIC9(f32),
-    PIC9Binary(f32),
+    PICX(String),
+    PIC9(String),
+    OCCURS,
+    UNKNOWN,
 }
 
 impl Type {
     fn size(&self) -> u32 {
         use Type::*;
         match self {
-            PICX(val) => *val,
+            PICX(val) => {
+                let re = Regex::new(r"X\((\d{1,})\)|X").unwrap();
+                let v_type: Vec<&str> =
+                    val.match_indices(&re).map(|(_, x)| x).collect();
+                v_type.iter().cloned().fold(0, |acc, x| {
+                    let xx: String = if x.contains("X(") {
+                        let mut temp_xx: String =
+                            x.replace("X(", "").to_string();
+                        temp_xx = temp_xx.replace(")", "").to_string();
+                        temp_xx
+                    } else {
+                        x.to_string()
+                    };
+                    if xx.contains("X") {
+                        acc + 1
+                    } else {
+                        acc + xx.parse().unwrap_or(0)
+                    }
+                })
+                //*val
+            },
             PIC9(_) => {
                 // TODO more in depth
                 0 as u32
             },
-            PIC9Binary(_) => {
-                // TODO more in depth
-                0 as u32
-            },
+            OCCURS => 0 as u32,
+            UNKNOWN => 0 as u32,
         }
     }
 }
 
+/*
 fn compute(line: &str) -> u32 {
     use Type::*;
     let l: Line = Line {
         field_type: PICX(10),
     };
     l.field_type.size()
-}
+}*/

@@ -13,6 +13,8 @@
  * script qui vérifie les sources serrait interessant
  */
 extern crate regex;
+mod cfg;
+use cfg::parse;
 use num::Integer;
 use regex::Regex;
 use std::env;
@@ -22,10 +24,12 @@ use std::io::BufReader;
 use std::path::PathBuf;
 
 fn main() -> std::io::Result<()> {
+    let clap = parse();
     println!("Compute Cobol Pic");
     //println!("Size: {}", compute("TODO"));
     println!("-----------------");
-    let filename = "examples/sample1.cpy";
+    //let filename = "examples/sample1.cpy";
+    let filename = clap.file;
     println!("In file {}", filename);
     let mut file_path = PathBuf::new();
     file_path.push(env::current_dir().unwrap().as_path());
@@ -160,7 +164,7 @@ fn main() -> std::io::Result<()> {
     let _: Vec<&LineDebug> = vector_debug
         .iter()
         .map(|x| x)
-        .inspect(|x| println!("{:?}", x))
+        // .inspect(|x| println!("{:?}", x))
         .collect();
 
     let mut pos = 0;
@@ -242,19 +246,36 @@ fn main() -> std::io::Result<()> {
                 pos: x.pos,
                 name: x.name,
                 occurs: x.occurs,
-                sw_occurs: x.sw_occurs,
                 field_type,
             }
         })
         .collect();
 
-    for i in iter_proper {
+    for i in iter_proper.iter() {
         let mut occ = i.occurs;
         if occ == 0 {
             occ = 1
         };
-        println!("Debug: {:?}, size: {}", &i, i.field_type.size() * occ);
+        match i.field_type.size() {
+            Some(size) => {
+                println!("{:?}, size: {}", &i, size * occ);
+            },
+            None => {
+                println!("{:?}", &i);
+            },
+        }
     }
+    println!("------------------");
+    println!(
+        "Size: {}",
+        iter_proper.iter().fold(0, |acc, x| {
+            let mut occ = x.occurs;
+            if occ == 0 {
+                occ = 1;
+            }
+            acc + (x.field_type.size().unwrap_or(0) * occ)
+        })
+    );
     Ok(())
 }
 
@@ -273,7 +294,6 @@ struct LineCobol {
     pos: u32,
     name: String,
     occurs: u32,
-    sw_occurs: bool,
     field_type: Type,
 }
 
@@ -287,14 +307,14 @@ enum Type {
 }
 
 impl Type {
-    fn size(&self) -> u32 {
+    fn size(&self) -> Option<u32> {
         use Type::*;
         match self {
             PICX(val) => {
                 let re = Regex::new(r"X\((\d{1,})\)|X").unwrap();
                 let v_type: Vec<&str> =
                     val.match_indices(&re).map(|(_, x)| x).collect();
-                v_type.iter().cloned().fold(0, |acc, x| {
+                let result: u32 = v_type.iter().cloned().fold(0, |acc, x| {
                     let xx: String = if x.contains("X(") {
                         let mut temp_xx: String =
                             x.replace("X(", "").to_string();
@@ -308,7 +328,8 @@ impl Type {
                     } else {
                         acc + xx.parse().unwrap_or(0)
                     }
-                })
+                });
+                Some(result)
             },
             PIC9(val) => {
                 let re =
@@ -316,7 +337,7 @@ impl Type {
                         .unwrap();
                 let v_type: Vec<&str> =
                     val.match_indices(&re).map(|(_, x)| x).collect();
-                v_type.iter().cloned().fold(0, |acc, x| {
+                let result: u32 = v_type.iter().cloned().fold(0, |acc, x| {
                     let xx: String = if x.contains("9(") {
                         let mut temp_xx: String =
                             x.replace("9(", "").to_string();
@@ -343,11 +364,12 @@ impl Type {
                     } else {
                         acc + xx.parse().unwrap_or(0)
                     }
-                })
+                });
+                Some(result)
             },
-            STRUCT => 0 as u32,
-            OCCURS => 0 as u32,
-            UNKNOWN => 0 as u32,
+            STRUCT => None,
+            OCCURS => None,
+            UNKNOWN => None,
         }
     }
 }

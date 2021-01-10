@@ -23,6 +23,7 @@ use std::path::PathBuf;
 
 fn main() -> std::io::Result<()> {
     let clap = parse();
+    let current_file: String = clap.file.clone();
     let sw_separator = clap.separator;
     let filename = clap.file;
     let mut file_path = PathBuf::new();
@@ -552,6 +553,8 @@ fn main() -> std::io::Result<()> {
         display(
             iter_struct_and_occurs.iter().collect(),
             sw_separator.clone(),
+            false,
+            "".to_string(),
         );
     }
 
@@ -578,12 +581,19 @@ fn main() -> std::io::Result<()> {
                 })
                 .collect(),
             sw_separator.clone(),
+            true,
+            current_file,
         );
     }
 
     let sw_compute_src = clap.compute_src;
     if sw_compute_src.clone() {
-        display(iter_proper.iter().collect(), sw_separator.clone());
+        display(
+            iter_proper.iter().collect(),
+            sw_separator.clone(),
+            false,
+            "".to_string(),
+        );
     }
     let error: u32 = iter_proper.iter().fold(0, |acc, x| match x.field_type {
         Type::UNKNOWN => acc + 1,
@@ -641,7 +651,12 @@ struct LineCobol {
     field_type_original: String,
 }
 
-fn display(vec: Vec<&LineCobol>, sw_separator: bool) {
+fn display(
+    vec: Vec<&LineCobol>,
+    sw_separator: bool,
+    sw_file_name_error: bool,
+    file_name: String,
+) {
     let mut min: Vec<u32> = Vec::new();
     for i in vec.iter() {
         let mut occ = i.occurs;
@@ -778,35 +793,42 @@ fn display(vec: Vec<&LineCobol>, sw_separator: bool) {
             .trim_end()
             .to_string(),
         };
-        match &i.field_type {
+        let print: String = match &i.field_type {
             Type::PICX((_, _, bin)) | Type::PIC9((_, _, bin)) => {
                 match bin {
                     Binary::None => {
-                        println!("{:<49}PIC {}.", begin, i.field_type_original);
+                        format!("{:<49}PIC {}.", begin, i.field_type_original)
                     },
                     _ => {
-                        println!(
+                        format!(
                             "{:<49}PIC {} {}.",
                             begin,
                             i.field_type_original,
                             bin.text()
-                        );
+                        )
                     },
-                };
+                }
             },
             Type::STRUCT => {
-                println!("{}.", begin);
+                format!("{}.", begin)
             },
             Type::OCCURS => {
-                println!("{} OCCURS {}.", begin, i.field_type_original);
+                format!("{} OCCURS {}.", begin, i.field_type_original)
             },
             Type::STRUCTSIZED(_) => {
-                println!("{}.", begin);
+                format!("{}.", begin)
             },
             Type::OCCURSSIZED(_) => {
-                println!("{} OCCURS {}.", begin, i.field_type_original);
+                format!("{} OCCURS {}.", begin, i.field_type_original)
             },
-            _ => {},
+            _ => "".to_string(),
+        };
+        if print != "".to_string() {
+            if sw_file_name_error {
+                println!("{:<80}{}", print, file_name);
+            } else {
+                println!("{}", print);
+            }
         }
     }
     if sw_separator.clone() {

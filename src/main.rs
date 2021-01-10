@@ -31,15 +31,15 @@ fn main() -> std::io::Result<()> {
     //file_path.push("sample1.cpy");
     file_path.push(filename);
     let file = File::open(file_path.as_path())?;
-    let mut contents;
+    let reader = BufReader::new(&file);
 
     // BEFORE SPLIT REMOVE COMMENT * IN COPY FILE read by line
-    let reader = BufReader::new(&file);
+    let mut contents;
 
     let mut reader_mod: Vec<String> = Vec::new();
     for l in reader.lines() {
         let mut sw_ignore = false;
-        let line = l?;
+        let line = l.unwrap_or("".to_string());
         if &line.chars().count() >= &7 {
             let mut chars = line.chars();
             let mut x: char = ' ';

@@ -29,7 +29,7 @@
            03 STRUCT-TEXTE                       PIC X(60) VALUE
            "Message de test".
            03 STRUCT-I                           PIC 9999 COMP-1.
-           03 STRUCT-J                           PIC 9(6).
+           03 STRUCT-J                           PIC 9(6).       
            03 STRUCT-J-REDEF REDEFINES STRUCT-J.
                05 FILLER                         PIC 99.
                05 STRUCT-JJJ                     PIC 9(4).

@@ -63,7 +63,7 @@ fn main() -> std::io::Result<()> {
     }
     contents = reader_mod
         .iter()
-        .fold(String::new(), |a, b| format!("{}{}\n", a, b));
+        .fold(String::new(), |a, b| format!("{}{}\n", a, b.trim_end()));
     contents = contents.trim_end().to_string();
 
     if clap.filtered_src {

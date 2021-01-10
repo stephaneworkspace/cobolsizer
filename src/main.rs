@@ -130,7 +130,7 @@ fn main() -> std::io::Result<()> {
                 match i {
                     0 => field_pos = vv,
                     1 => {
-                        let re_value = Regex::new(r"VALUE").unwrap(); // TODO BINARY
+                        let re_value = Regex::new(r"VALUE|BLANK ZERO").unwrap();
                         let splitn_value: Vec<&str> =
                             re_value.splitn(vv, 2).collect();
                         field_size = splitn_value
@@ -138,6 +138,8 @@ fn main() -> std::io::Result<()> {
                             .next()
                             .unwrap_or(&"")
                             .replace(" ", "")
+                            .trim_end()
+                            .to_string()
                     },
                     _ => break,
                 }

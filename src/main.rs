@@ -6,9 +6,6 @@
  *
  * Compatible Microfocus RM Cobol
  *
- * L'idée serrait une sélection mode visual dans vim et une touche pour donner
- * la taille dans la quickfix list
- *
  */
 extern crate regex;
 mod cfg;
@@ -30,7 +27,7 @@ fn main() -> std::io::Result<()> {
     //file_path.push(env::current_dir().unwrap().as_path());
     //file_path.push("examples");
     //file_path.push("sample1.cpy");
-    file_path.push(filename);
+    file_path.push(&filename);
     let file = File::open(file_path.as_path())?;
     let reader = BufReader::new(&file);
 

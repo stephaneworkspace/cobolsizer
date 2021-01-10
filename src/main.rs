@@ -877,7 +877,7 @@ impl Type {
             PICXREDEFINES => None,
             PIC9((val, _, _)) => {
                 let re =
-                    Regex::new(r"9\((\d{1,})\)|Z\((\d{1,})\)|9|Z|\-|.|V|S")
+                    Regex::new(r"9\((\d{1,})\)|Z\((\d{1,})\)|9|Z|\-|.|,|V|S")
                         .unwrap();
                 let v_type: Vec<&str> =
                     val.match_indices(&re).map(|(_, x)| x).collect();
@@ -899,6 +899,7 @@ impl Type {
                         || xx.contains("Z")
                         || xx.contains("-")
                         || xx.contains(".")
+                        || xx.contains(",")
                         || xx.contains("V")
                         || xx.contains("S")
                         || xx.contains("$")

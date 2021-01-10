@@ -9,6 +9,7 @@ pub struct Config {
     pub compute_src: bool,
     pub compute_struct_and_occurs: bool,
     pub separator: bool,
+    pub error: bool,
 }
 
 const FILE: &str = "path";
@@ -18,6 +19,7 @@ const SHOW_FILTERED_SRC: &str = "show_filtered_src";
 const SHOW_DETAIL_COMPUTE: &str = "show_detail_compute";
 const SHOW_COMPUTE_STRUCT_AND_OCCURS: &str = "compute_struct_and_occurs";
 const SEPARATOR: &str = "separator";
+const DISPLAY_ERROR: &str = "display_error";
 
 pub fn parse() -> Config {
     let matches = App::new("Cobol sizer")
@@ -86,6 +88,15 @@ pub fn parse() -> Config {
                 .required(false)
                 .takes_value(false),
         )
+        .arg(
+            Arg::with_name(DISPLAY_ERROR)
+                .long("no-error")
+                .value_name("DISPLAY_ERROR")
+                .help("Don't display error from non data COBOL structure")
+                .multiple(false)
+                .required(false)
+                .takes_value(false),
+        )
         .get_matches();
     // Set result if nothing selected
     let result = if !matches.is_present(SHOW_COMPUTE_STRUCT_AND_OCCURS)
@@ -106,5 +117,6 @@ pub fn parse() -> Config {
         compute_struct_and_occurs: matches
             .is_present(SHOW_COMPUTE_STRUCT_AND_OCCURS),
         separator: matches.is_present(SEPARATOR),
+        error: !matches.is_present(DISPLAY_ERROR),
     }
 }

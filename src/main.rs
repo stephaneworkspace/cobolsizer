@@ -614,9 +614,8 @@ fn main() -> std::io::Result<()> {
             );
         }
     }
-    // Nothing in UNKNOWN... other line than regex COBOL are ignored,
-    // this code isn't utile
-    if error > 0 {
+    // That can be normal COBOL code
+    if clap.error && error > 0 {
         eprintln!("{} structure COBOL error line found !", error);
     }
     Ok(())

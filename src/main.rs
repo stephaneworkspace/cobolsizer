@@ -53,12 +53,19 @@ fn main() -> std::io::Result<()> {
             sw_ignore = true;
         }
         if !sw_ignore {
-            reader_mod.push(line.to_string())
+            let mut temp = line.to_string();
+            // Remove before * comment
+            if temp.chars().count() > 6 {
+                for _ in 0..6 {
+                    temp.remove(0);
+                }
+            }
+            reader_mod.push(temp)
         }
     }
     contents = reader_mod
         .iter()
-        .fold(String::new(), |a, b| format!("{}{}\n", a, b.trim_end()));
+        .fold(String::new(), |a, b| format!("{}{}\n", a, b));
     contents = contents.trim_end().to_string();
 
     if clap.filtered_src {

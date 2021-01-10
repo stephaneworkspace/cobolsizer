@@ -4,6 +4,7 @@
       *    
       *    ATTENTION:
       *    LA PARTIE COMP-1 + BINARY ETC... N'EST PAS ENCORE AU POINT
+      *    AU BYTE PRET J'AI L'IMPRESSION
       *
       ******************************************************************
        01  STRUCT.
@@ -28,6 +29,9 @@
                                                  PIC XX.
                05 STRUCT-ARRAY-NOM               PIC X(100).
            03 STRUCT-NEXT                        PIC 9.
+           03 STRUCT-SW-ERROR                    PIC 99.
+           88 STRUCT-SW-ERROR-WARNING            VALUE 10.
+           88 STRUCT-SW-ERROR-FATAL              VALUE 20.
            03 STRUCT-OCCURS-INSIDE OCCURS 10     PIC 99.
        01  STRUCT2ERR.
            03 STRUCT2ERR-LONG-TEXT               PIC X(65000).

@@ -459,28 +459,34 @@ fn main() -> std::io::Result<()> {
                 field_type_original: field_size,
             }
         })
-        // ignore REDEFINES
-        .filter(|x| match x.field_type {
-            Type::PICXREDEFINES => false,
-            Type::PIC9REDEFINES => false,
-            Type::STRUCTREDEFINES => {
-                sw_redefines = true;
-                old_pos = x.pos;
+        // ignore REDEFINES + niveau 88 + niveau 66
+        .filter(|x| {
+            if x.pos == 88 || x.pos == 66 {
                 false
-            },
-            _ => {
-                if sw_redefines {
-                    if x.pos > old_pos {
+            } else {
+                match x.field_type {
+                    Type::PICXREDEFINES => false,
+                    Type::PIC9REDEFINES => false,
+                    Type::STRUCTREDEFINES => {
+                        sw_redefines = true;
+                        old_pos = x.pos;
                         false
-                    } else {
-                        sw_redefines = false;
-                        old_pos = 0;
-                        true
-                    }
-                } else {
-                    true
+                    },
+                    _ => {
+                        if sw_redefines {
+                            if x.pos > old_pos {
+                                false
+                            } else {
+                                sw_redefines = false;
+                                old_pos = 0;
+                                true
+                            }
+                        } else {
+                            true
+                        }
+                    },
                 }
-            },
+            }
         })
         //.inspect(|x| println!("{:?}", x))
         .collect();

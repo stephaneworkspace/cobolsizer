@@ -283,25 +283,164 @@ fn main() -> std::io::Result<()> {
     let iter_proper: Vec<LineCobol> = iter
         .into_iter()
         .map(|x| {
+            let mut field_size: String = x.field_size.clone();
             let field_type: Type = if x.sw_occurs {
                 Type::OCCURS
-            } else if x.field_size.contains("X") {
+            } else if field_size.contains("X") {
                 if x.field_pos.contains(" REDEFINES ") {
                     Type::PICXREDEFINES
                 } else {
-                    Type::PICX((x.field_size.clone(), x.sw_occurs_inside))
+                    // Page 14
+                    // https://www.microfocus.com/documentation/rm-cobol/1214/RMC-LRM.pdf
+                    if field_size.clone().contains("COMP-1") {
+                        field_size = field_size.replace("COMP-1", "");
+                        Type::PICX((
+                            field_size.clone(),
+                            x.sw_occurs_inside,
+                            Binary::COMP1,
+                        ))
+                    } else if field_size.clone().contains("COMP-3") {
+                        field_size = field_size.replace("COMP-3", "");
+                        Type::PICX((
+                            field_size.clone(),
+                            x.sw_occurs_inside,
+                            Binary::COMP3,
+                        ))
+                    } else if field_size.clone().contains("COMP-4") {
+                        field_size = field_size.replace("COMP-4", "");
+                        Type::PICX((
+                            field_size.clone(),
+                            x.sw_occurs_inside,
+                            Binary::COMP4,
+                        ))
+                    } else if field_size.clone().contains("COMP-5") {
+                        field_size = field_size.replace("COMP-5", "");
+                        Type::PICX((
+                            field_size.clone(),
+                            x.sw_occurs_inside,
+                            Binary::COMP5,
+                        ))
+                    } else if field_size.clone().contains("COMP-6") {
+                        field_size = field_size.replace("COMP-6", "");
+                        Type::PICX((
+                            field_size.clone(),
+                            x.sw_occurs_inside,
+                            Binary::COMP6,
+                        ))
+                    } else if field_size.clone().contains("PACKED-DECIMAL") {
+                        field_size = field_size.replace("PACKED-DECIMAL", "");
+                        Type::PICX((
+                            field_size.clone(),
+                            x.sw_occurs_inside,
+                            Binary::PACKEDDECIMAL,
+                        ))
+                    } else if field_size.clone().contains("BINARY(") {
+                        let re_value =
+                            Regex::new(r"BINARY\((\d{1,})\)Y").unwrap();
+                        let splitn_value: Vec<&str> =
+                            re_value.splitn(&field_size, 2).collect();
+                        let mut iter = splitn_value.iter();
+                        let pic = iter.next().unwrap_or(&"").replace(" ", "");
+                        let binary = iter
+                            .next()
+                            .unwrap_or(&"")
+                            .replace(" ", "")
+                            .parse()
+                            .unwrap_or(0);
+                        field_size = pic.clone();
+                        Type::PICX((
+                            pic,
+                            x.sw_occurs_inside,
+                            Binary::BINARY(binary),
+                        ))
+                    } else {
+                        Type::PICX((
+                            field_size.clone(),
+                            x.sw_occurs_inside,
+                            Binary::None,
+                        ))
+                    }
                 }
-            } else if x.field_size.contains("9")
-                || x.field_size.contains("Z")
-                || x.field_size.contains("-")
-                || x.field_size.contains(".")
-                || x.field_size.contains("$")
-                || x.field_size.contains("*")
+            } else if field_size.contains("9")
+                || field_size.contains("Z")
+                || field_size.contains("-")
+                || field_size.contains(".")
+                || field_size.contains("$")
+                || field_size.contains("*")
             {
                 if x.field_pos.contains(" REDEFINES ") {
                     Type::PIC9REDEFINES
                 } else {
-                    Type::PIC9((x.field_size.clone(), x.sw_occurs_inside))
+                    // Page 14
+                    // https://www.microfocus.com/documentation/rm-cobol/1214/RMC-LRM.pdf
+                    if field_size.clone().contains("COMP-1") {
+                        field_size = field_size.replace("COMP-1", "");
+                        Type::PIC9((
+                            field_size.clone(),
+                            x.sw_occurs_inside,
+                            Binary::COMP1,
+                        ))
+                    } else if field_size.clone().contains("COMP-3") {
+                        field_size = field_size.replace("COMP-3", "");
+                        Type::PIC9((
+                            field_size.clone(),
+                            x.sw_occurs_inside,
+                            Binary::COMP3,
+                        ))
+                    } else if field_size.clone().contains("COMP-4") {
+                        field_size = field_size.replace("COMP-4", "");
+                        Type::PIC9((
+                            field_size.clone(),
+                            x.sw_occurs_inside,
+                            Binary::COMP4,
+                        ))
+                    } else if field_size.clone().contains("COMP-5") {
+                        field_size = field_size.replace("COMP-5", "");
+                        Type::PIC9((
+                            field_size.clone(),
+                            x.sw_occurs_inside,
+                            Binary::COMP5,
+                        ))
+                    } else if field_size.clone().contains("COMP-6") {
+                        field_size = field_size.replace("COMP-6", "");
+                        Type::PIC9((
+                            field_size.clone(),
+                            x.sw_occurs_inside,
+                            Binary::COMP6,
+                        ))
+                    } else if field_size.clone().contains("PACKED-DECIMAL") {
+                        field_size = field_size.replace("PACKED-DECIMAL", "");
+                        Type::PIC9((
+                            field_size.clone(),
+                            x.sw_occurs_inside,
+                            Binary::PACKEDDECIMAL,
+                        ))
+                    } else if field_size.clone().contains("BINARY(") {
+                        let re_value =
+                            Regex::new(r"BINARY\((\d{1,})\)Y").unwrap();
+                        let splitn_value: Vec<&str> =
+                            re_value.splitn(&x.field_size, 2).collect();
+                        let mut iter = splitn_value.iter();
+                        let pic = iter.next().unwrap_or(&"").replace(" ", "");
+                        let binary = iter
+                            .next()
+                            .unwrap_or(&"")
+                            .replace(" ", "")
+                            .parse()
+                            .unwrap_or(0);
+                        field_size = pic.clone();
+                        Type::PIC9((
+                            pic,
+                            x.sw_occurs_inside,
+                            Binary::BINARY(binary),
+                        ))
+                    } else {
+                        Type::PIC9((
+                            field_size.clone(),
+                            x.sw_occurs_inside,
+                            Binary::None,
+                        ))
+                    }
                 }
             } else if x.pos > 0 {
                 if x.field_pos.contains(" REDEFINES ") {
@@ -317,7 +456,7 @@ fn main() -> std::io::Result<()> {
                 name: x.name,
                 occurs: x.occurs,
                 field_type,
-                field_type_original: x.field_size,
+                field_type_original: field_size,
             }
         })
         // ignore REDEFINES
@@ -343,6 +482,7 @@ fn main() -> std::io::Result<()> {
                 }
             },
         })
+        //.inspect(|x| println!("{:?}", x))
         .collect();
     let mut iter_struct_and_occurs: Vec<LineCobol> = Vec::new();
     for (i, record) in iter_proper.iter().enumerate() {
@@ -526,14 +666,14 @@ fn display(vec: Vec<&LineCobol>, sw_separator: bool) {
         };
         let space = "    ";
         let text_occurs: String = match i.field_type {
-            Type::PICX((_, sw_occurs_inside)) => {
+            Type::PICX((_, sw_occurs_inside, _)) => {
                 if sw_occurs_inside {
                     format!("OCCURS {}", i.occurs)
                 } else {
                     "".to_string()
                 }
             },
-            Type::PIC9((_, sw_occurs_inside)) => {
+            Type::PIC9((_, sw_occurs_inside, _)) => {
                 if sw_occurs_inside {
                     format!("OCCURS {}", i.occurs)
                 } else {
@@ -626,12 +766,21 @@ fn display(vec: Vec<&LineCobol>, sw_separator: bool) {
             .trim_end()
             .to_string(),
         };
-        match i.field_type {
-            Type::PICX((_, _)) => {
-                println!("{:<49}PIC {}.", begin, i.field_type_original);
-            },
-            Type::PIC9((_, _)) => {
-                println!("{:<49}PIC {}.", begin, i.field_type_original);
+        match &i.field_type {
+            Type::PICX((_, _, bin)) | Type::PIC9((_, _, bin)) => {
+                match bin {
+                    Binary::None => {
+                        println!("{:<49}PIC {}.", begin, i.field_type_original);
+                    },
+                    _ => {
+                        println!(
+                            "{:<49}PIC {} {}.",
+                            begin,
+                            i.field_type_original,
+                            bin.text()
+                        );
+                    },
+                };
             },
             Type::STRUCT => {
                 println!("{}.", begin);
@@ -655,9 +804,9 @@ fn display(vec: Vec<&LineCobol>, sw_separator: bool) {
 
 #[derive(Debug)]
 enum Type {
-    PICX((String, bool)), // value + sw_occurs_inside
+    PICX((String, bool, Binary)), // value + sw_occurs_inside + Optional Binary
     PICXREDEFINES,
-    PIC9((String, bool)), // value + sw_occurs_inside
+    PIC9((String, bool, Binary)), // value + sw_occurs_inside + Optional Binary
     PIC9REDEFINES,
     STRUCT,
     STRUCTREDEFINES,
@@ -671,7 +820,7 @@ impl Type {
     fn size(&self) -> Option<u32> {
         use Type::*;
         match self {
-            PICX((val, _)) => {
+            PICX((val, _, _)) => {
                 let re = Regex::new(r"X\((\d{1,})\)|X").unwrap();
                 let v_type: Vec<&str> =
                     val.match_indices(&re).map(|(_, x)| x).collect();
@@ -693,7 +842,7 @@ impl Type {
                 Some(result)
             },
             PICXREDEFINES => None,
-            PIC9((val, _)) => {
+            PIC9((val, _, _)) => {
                 let re =
                     Regex::new(r"9\((\d{1,})\)|Z\((\d{1,})\)|9|Z|\-|.|V|S")
                         .unwrap();
@@ -736,6 +885,34 @@ impl Type {
             UNKNOWN => None,
             STRUCTSIZED(val) => Some(*val),
             OCCURSSIZED(val) => Some(*val),
+        }
+    }
+}
+
+#[derive(Debug)]
+enum Binary {
+    COMP1,
+    COMP3,
+    COMP4,
+    COMP5,
+    COMP6,
+    PACKEDDECIMAL,
+    BINARY(u32),
+    None,
+}
+
+impl Binary {
+    fn text(&self) -> String {
+        use Binary::*;
+        match &self {
+            COMP1 => "COMP-1".to_string(),
+            COMP3 => "COMP-3".to_string(),
+            COMP4 => "COMP-4".to_string(),
+            COMP5 => "COMP-5".to_string(),
+            COMP6 => "COMP-6".to_string(),
+            PACKEDDECIMAL => "PACKED-DECIMAL".to_string(),
+            BINARY(val) => format!("BINARY({})", val),
+            None => "".to_string(),
         }
     }
 }

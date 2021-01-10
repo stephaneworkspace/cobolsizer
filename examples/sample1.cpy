@@ -1,13 +1,15 @@
       ******************************************************************
       *
-      *    TODO:
-      *    - COMP-1
+      *    EXAMPLE
+      *    
+      *    ATTENTION:
+      *    LA PARTIE COMP-1 + BINARY ETC... N'EST PAS ENCORE AU POINT
       *
       ******************************************************************
        01  STRUCT.
            03 STRUCT-TEXTE                       PIC X(60) VALUE
            "Message de test".
-           03 STRUCT-I                           PIC 9999.
+           03 STRUCT-I                           PIC 9999 COMP-1.
            03 STRUCT-J                           PIC 9(6).
            03 STRUCT-J-REDEF REDEFINES STRUCT-J.
                05 FILLER                         PIC 99.

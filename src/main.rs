@@ -793,20 +793,18 @@ fn display(
             .to_string(),
         };
         let print: String = match &i.field_type {
-            Type::PICX((_, _, bin)) | Type::PIC9((_, _, bin)) => {
-                match bin {
-                    Binary::None => {
-                        format!("{:<49}PIC {}.", begin, i.field_type_original)
-                    },
-                    _ => {
-                        format!(
-                            "{:<49}PIC {} {}.",
-                            begin,
-                            i.field_type_original,
-                            bin.text()
-                        )
-                    },
-                }
+            Type::PICX((_, _, bin)) | Type::PIC9((_, _, bin)) => match bin {
+                Binary::None => {
+                    format!("{:<49}PIC {}.", begin, i.field_type_original)
+                },
+                _ => {
+                    format!(
+                        "{:<49}PIC {} {}.",
+                        begin,
+                        i.field_type_original,
+                        bin.text()
+                    )
+                },
             },
             Type::STRUCT => {
                 format!("{}.", begin)
@@ -895,19 +893,23 @@ impl Type {
                     } else {
                         x.to_string()
                     };
-                    if xx.contains("9")
-                        || xx.contains("Z")
-                        || xx.contains("-")
-                        || xx.contains(".")
-                        || xx.contains(",")
-                        || xx.contains("V")
-                        || xx.contains("S")
-                        || xx.contains("$")
-                        || xx.contains("*")
+                    if xx.contains(".")
+                        || x.contains(",")
+                        || x.contains("S")
+                        || x.contains("V")
                     {
-                        acc + 1
+                        acc
                     } else {
-                        acc + xx.parse().unwrap_or(0)
+                        if xx.contains("9")
+                            || xx.contains("Z")
+                            || xx.contains("-")
+                            || xx.contains("$")
+                            || xx.contains("*")
+                        {
+                            acc + 1
+                        } else {
+                            acc + xx.parse().unwrap_or(0)
+                        }
                     }
                 });
                 Some(result)
